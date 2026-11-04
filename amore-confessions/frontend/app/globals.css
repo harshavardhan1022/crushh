@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --amore-pink: #F7B6D2;
+    --amore-soft-pink: #FCE4EF;
+    --amore-lavender: #D9C8F2;
+    --amore-deep-purple: #321442;
+    --amore-dark-bg: #151022;
+    --amore-dark-card: #1E1535;
+    --background: #FCE4EF;
+    --foreground: #321442;
+    --card: rgba(255, 255, 255, 0.7);
+    --card-border: rgba(247, 182, 210, 0.3);
+  }
+
+  .dark {
+    --background: #151022;
+    --foreground: #F7B6D2;
+    --card: rgba(30, 21, 53, 0.7);
+    --card-border: rgba(217, 200, 242, 0.15);
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/70 dark:bg-amore-dark-card/70 backdrop-blur-xl border border-amore-pink/20 dark:border-amore-lavender/15 rounded-2xl shadow-glass;
+  }
+
+  .glass-card-strong {
+    @apply bg-white/80 dark:bg-amore-dark-card/80 backdrop-blur-2xl border border-amore-pink/30 dark:border-amore-lavender/20 rounded-2xl shadow-pink-md;
+  }
+
+  .btn-primary {
+    @apply bg-amore-pink hover:bg-amore-pink/90 text-amore-deep-purple font-semibold px-6 py-3 rounded-xl transition-all duration-200 shadow-pink-sm hover:shadow-pink-md active:scale-[0.98];
+  }
+
+  .btn-secondary {
+    @apply bg-amore-lavender/30 hover:bg-amore-lavender/50 dark:bg-amore-lavender/20 dark:hover:bg-amore-lavender/30 text-amore-deep-purple dark:text-amore-pink font-medium px-5 py-2.5 rounded-xl transition-all duration-200;
+  }
+
+  .input-field {
+    @apply w-full bg-white/60 dark:bg-amore-dark-bg/60 border border-amore-pink/20 dark:border-amore-lavender/20 rounded-xl px-4 py-3 text-amore-deep-purple dark:text-white placeholder:text-amore-deep-purple/40 dark:placeholder:text-amore-lavender/40 focus:outline-none focus:ring-2 focus:ring-amore-pink/40 dark:focus:ring-amore-lavender/40 transition-all duration-200;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(247, 182, 210, 0.3);
+  border-radius: 3px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(217, 200, 242, 0.3);
+}
+
+/* Hide cursor when custom heart cursor is active */
+.custom-cursor * {
+  cursor: none !important;
+}
+
+.custom-cursor {
+  cursor: none !important;
+}
+
+/* No flash on load */
+html {
+  background-color: #FCE4EF;
+}
+
+html.dark {
+  background-color: #151022;
+}
