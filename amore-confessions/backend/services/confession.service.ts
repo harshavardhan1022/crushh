@@ -54,6 +54,76 @@ export interface ConfessionStats {
 }
 
 // ---------------------------------------------------------------------------
+// In-Memory Dev Store (Active only when Supabase is in placeholder/mock mode)
+// ---------------------------------------------------------------------------
+const isPlaceholderMode = () =>
+  !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder');
+
+let devStore: Confession[] = [
+  {
+    id: 'confession-001',
+    sender_name: 'Library Regular',
+    crush_name: 'Ananya Sharma',
+    department: 'B.Tech',
+    academic_year: '3rd',
+    confession_message:
+      'Every time you sit by the quiet corner in the central library with your coffee and sketchbook, you brighten up the whole room. I have never had the courage to say hi in person, but your smile is genuinely unforgettable.',
+    publication_consent: true,
+    status: 'pending',
+    instagram_published: false,
+    published_at: null,
+    created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
+    updated_at: new Date(Date.now() - 3600000 * 2).toISOString(),
+  },
+  {
+    id: 'confession-002',
+    sender_name: null,
+    crush_name: 'Rohan Verma',
+    department: 'MBA',
+    academic_year: '1st',
+    confession_message:
+      'Your presentation on campus entrepreneurship was so inspiring! The confidence and humor you brought to the stage made everyone take notice. Hope you know how talented you are.',
+    publication_consent: true,
+    status: 'approved',
+    instagram_published: true,
+    published_at: new Date(Date.now() - 3600000 * 12).toISOString(),
+    created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
+    updated_at: new Date(Date.now() - 3600000 * 12).toISOString(),
+  },
+  {
+    id: 'confession-003',
+    sender_name: 'A Shy Classmate',
+    crush_name: 'Pooja Reddy',
+    department: 'Pharm B',
+    academic_year: '2nd',
+    confession_message:
+      'To the girl in the lab coat who always helps others when experiments get tricky: you have the kindest heart on this entire campus.',
+    publication_consent: true,
+    status: 'approved',
+    instagram_published: false,
+    published_at: null,
+    created_at: new Date(Date.now() - 3600000 * 48).toISOString(),
+    updated_at: new Date(Date.now() - 3600000 * 48).toISOString(),
+  },
+  {
+    id: 'confession-004',
+    sender_name: null,
+    crush_name: 'Karthik Nair',
+    department: 'MCA',
+    academic_year: '2nd',
+    confession_message:
+      'Watching you code during the hackathon was like watching an artist paint. Best of luck on final year placements!',
+    publication_consent: false,
+    status: 'rejected',
+    instagram_published: false,
+    published_at: null,
+    created_at: new Date(Date.now() - 3600000 * 72).toISOString(),
+    updated_at: new Date(Date.now() - 3600000 * 72).toISOString(),
+  },
+];
+
+// ---------------------------------------------------------------------------
 // Service Functions
 // ---------------------------------------------------------------------------
 
@@ -84,6 +154,19 @@ export async function submitConfession(
     status: 'pending' as const,
     instagram_published: false,
   };
+
+  // Dev fallback
+  if (isPlaceholderMode()) {
+    const newConfession: Confession = {
+      ...sanitized,
+      id: `confession-${Date.now()}`,
+      published_at: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    devStore.unshift(newConfession);
+    return { success: true, data: newConfession };
+  }
 
   const { data: confession, error } = await supabase
     .from('confessions')
@@ -118,9 +201,49 @@ export async function getConfessions(
     limit = 20,
   } = filters;
 
-  let query = supabase
-    .from('confessions')
-    .select('*', { count: 'exact' });
+  if (isPlaceholderMode()) {
+    let list = [...devStore];
+
+    if (status) {
+      list = list.filter((c) => c.status === status);
+    }
+    if (department) {
+      list = list.filter((c) => c.department === department);
+    }
+    if (year) {
+      list = list.filter((c) => c.academic_year === year);
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      list = list.filter(
+        (c) =>
+          c.crush_name.toLowerCase().includes(q) ||
+          c.confession_message.toLowerCase().includes(q) ||
+          (c.sender_name && c.sender_name.toLowerCase().includes(q)) ||
+          c.id.toLowerCase().includes(q)
+      );
+    }
+
+    // Sort
+    list.sort((a, b) => {
+      const aVal = a[sortBy] || '';
+      const bVal = b[sortBy] || '';
+      if (sortOrder === 'asc') return aVal > bVal ? 1 : -1;
+      return aVal < bVal ? 1 : -1;
+    });
+
+    const totalCount = list.length;
+    const from = (page - 1) * limit;
+    const paginated = list.slice(from, from + limit);
+
+    return {
+      success: true,
+      data: paginated,
+      count: totalCount,
+    };
+  }
+
+  let query = supabase.from('confessions').select('*', { count: 'exact' });
 
   // Apply filters
   if (status) {
@@ -178,6 +301,12 @@ export async function getConfessionById(
   supabase: SupabaseClient,
   id: string
 ): Promise<ServiceResult<Confession>> {
+  if (isPlaceholderMode()) {
+    const item = devStore.find((c) => c.id === id);
+    if (!item) return { success: false, error: 'Confession not found' };
+    return { success: true, data: item };
+  }
+
   const { data, error } = await supabase
     .from('confessions')
     .select('*')
@@ -202,6 +331,14 @@ export async function updateConfessionStatus(
   newStatus: ConfessionStatus,
   previousStatus: string
 ): Promise<ServiceResult<Confession>> {
+  if (isPlaceholderMode()) {
+    const item = devStore.find((c) => c.id === id);
+    if (!item) return { success: false, error: 'Confession not found' };
+    item.status = newStatus;
+    item.updated_at = new Date().toISOString();
+    return { success: true, data: item };
+  }
+
   // Update the confession status
   const { data: confession, error: updateError } = await supabase
     .from('confessions')
@@ -227,7 +364,6 @@ export async function updateConfessionStatus(
 
   if (logError) {
     console.error('[confession.service] moderation log error:', logError);
-    // Don't fail the whole operation if logging fails
   }
 
   return { success: true, data: confession as Confession };
@@ -241,6 +377,11 @@ export async function deleteConfession(
   id: string,
   adminId: string
 ): Promise<ServiceResult<void>> {
+  if (isPlaceholderMode()) {
+    devStore = devStore.filter((c) => c.id !== id);
+    return { success: true };
+  }
+
   // Fetch confession before deleting for the log
   const { data: existing } = await supabase
     .from('confessions')
@@ -248,17 +389,13 @@ export async function deleteConfession(
     .eq('id', id)
     .single();
 
-  const { error } = await supabase
-    .from('confessions')
-    .delete()
-    .eq('id', id);
+  const { error } = await supabase.from('confessions').delete().eq('id', id);
 
   if (error) {
     console.error('[confession.service] deleteConfession error:', error);
     return { success: false, error: error.message };
   }
 
-  // Create moderation log (confession_id will be SET NULL due to ON DELETE SET NULL)
   const { error: logError } = await supabase.from('moderation_logs').insert({
     confession_id: null,
     admin_id: adminId,
@@ -283,6 +420,14 @@ export async function markAsPublished(
   id: string,
   adminId: string
 ): Promise<ServiceResult<Confession>> {
+  if (isPlaceholderMode()) {
+    const item = devStore.find((c) => c.id === id);
+    if (!item) return { success: false, error: 'Confession not found' };
+    item.instagram_published = true;
+    item.published_at = new Date().toISOString();
+    return { success: true, data: item };
+  }
+
   const { data: confession, error } = await supabase
     .from('confessions')
     .update({
@@ -298,7 +443,6 @@ export async function markAsPublished(
     return { success: false, error: error.message };
   }
 
-  // Create moderation log
   const { error: logError } = await supabase.from('moderation_logs').insert({
     confession_id: id,
     admin_id: adminId,
@@ -321,7 +465,19 @@ export async function markAsPublished(
 export async function getStats(
   supabase: SupabaseClient
 ): Promise<ServiceResult<ConfessionStats>> {
-  // Fetch all counts in parallel
+  if (isPlaceholderMode()) {
+    return {
+      success: true,
+      data: {
+        total: devStore.length,
+        pending: devStore.filter((c) => c.status === 'pending').length,
+        approved: devStore.filter((c) => c.status === 'approved').length,
+        rejected: devStore.filter((c) => c.status === 'rejected').length,
+        published: devStore.filter((c) => c.instagram_published).length,
+      },
+    };
+  }
+
   const [totalRes, pendingRes, approvedRes, rejectedRes, publishedRes] =
     await Promise.all([
       supabase.from('confessions').select('*', { count: 'exact', head: true }),

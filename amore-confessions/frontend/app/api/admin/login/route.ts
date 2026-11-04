@@ -48,6 +48,35 @@ export async function POST(req: Request) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+    // Local development mode when Supabase is still configured with placeholder
+    const isPlaceholder = !supabaseUrl || supabaseUrl.includes('placeholder');
+    if (isPlaceholder) {
+      const configuredEmail = process.env.ADMIN_EMAIL || 'admin@amore.college';
+      const configuredPassword = process.env.INITIAL_ADMIN_PASSWORD || 'AdminSecret123!';
+
+      if (email.trim().toLowerCase() === configuredEmail.toLowerCase() && password === configuredPassword) {
+        const token = 'amore-dev-admin-session-token';
+        const response = NextResponse.json({
+          success: true,
+          user: { id: 'dev-admin-001', email: configuredEmail },
+          token,
+        });
+        response.cookies.set('amore-admin-token', token, {
+          httpOnly: true,
+          secure: false,
+          sameSite: 'lax',
+          path: '/',
+          maxAge: 3600 * 24,
+        });
+        return response;
+      } else {
+        return NextResponse.json(
+          { success: false, error: 'Invalid email or password' },
+          { status: 401 }
+        );
+      }
+    }
+
     if (!supabaseUrl || !anonKey) {
       return NextResponse.json(
         { success: false, error: 'Server authentication configuration is missing' },
