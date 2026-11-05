@@ -21,20 +21,22 @@ import {
   ChevronLeft,
   ChevronRight,
   Shield,
+  Layers,
 } from 'lucide-react';
-import { AdminSidebar, type DashboardView } from '@/components/AdminSidebar';
+import { AdminSidebar, type DashboardView, type CategorySelection } from '@/components/AdminSidebar';
 import { ConfessionDetailsModal } from '@/components/ConfessionDetailsModal';
 import { InstagramStoryModal } from '@/components/InstagramStoryModal';
 import { AdminSettings } from '@/components/AdminSettings';
 import { LoadingAnimation } from '@/components/LoadingAnimation';
 import type { Confession, DashboardStats } from '@/types';
-import { DEPARTMENTS, DEPARTMENT_YEARS, type Department } from '@backend/config';
+import { DEPARTMENTS, BTECH_BRANCHES, DEPARTMENT_YEARS, type Department, type BTechBranch } from '@backend/config';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
 
   // Navigation & View
   const [currentView, setCurrentView] = useState<DashboardView>('overview');
+  const [selectedCategory, setSelectedCategory] = useState<CategorySelection | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Data & Stats
@@ -53,6 +55,7 @@ export default function AdminDashboardPage() {
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
+  const [selectedBranch, setSelectedBranch] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -100,6 +103,7 @@ export default function AdminDashboardPage() {
       else if (currentView === 'rejected') params.set('status', 'rejected');
 
       if (selectedDepartment) params.set('department', selectedDepartment);
+      if (selectedBranch) params.set('branch', selectedBranch);
       if (selectedYear) params.set('year', selectedYear);
       if (searchQuery.trim()) params.set('search', searchQuery.trim());
 
@@ -126,13 +130,34 @@ export default function AdminDashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentView, selectedDepartment, selectedYear, searchQuery, sortOrder, currentPage, router]);
+  }, [currentView, selectedDepartment, selectedBranch, selectedYear, searchQuery, sortOrder, currentPage, router]);
 
-  // Initial load & view change
+  // Initial load & fetch on filter changes
   useEffect(() => {
     fetchStats();
     fetchConfessions();
   }, [fetchStats, fetchConfessions]);
+
+  // Handle Category selection from Sidebar
+  const handleSelectCategory = (cat: CategorySelection) => {
+    setCurrentView('category');
+    setSelectedCategory(cat);
+    setSelectedDepartment(cat.department || '');
+    setSelectedBranch(cat.branch || '');
+    setSelectedYear('');
+    setCurrentPage(1);
+  };
+
+  // Handle Main Nav View selection
+  const handleSelectView = (v: DashboardView) => {
+    setCurrentView(v);
+    setSelectedCategory(null);
+    if (v !== 'category') {
+      setSelectedDepartment('');
+      setSelectedBranch('');
+    }
+    setCurrentPage(1);
+  };
 
   // Handle Moderation Status Change
   const handleStatusChange = async (id: string, status: 'approved' | 'rejected') => {
@@ -217,16 +242,31 @@ export default function AdminDashboardPage() {
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
+  const getHeaderTitle = () => {
+    if (currentView === 'overview') return 'Dashboard Overview';
+    if (currentView === 'all') return 'All Confessions';
+    if (currentView === 'pending') return 'Pending Moderation';
+    if (currentView === 'approved') return 'Approved Confessions';
+    if (currentView === 'rejected') return 'Rejected Confessions';
+    if (currentView === 'published') return 'Instagram Stories';
+    if (currentView === 'category') {
+      if (selectedCategory?.department === 'B.Tech') {
+        return selectedCategory.branch ? `B.Tech – ${selectedCategory.branch}` : 'B.Tech (All Branches)';
+      }
+      return selectedCategory?.department || 'Department Category';
+    }
+    return currentView.replace('-', ' ');
+  };
+
   return (
     <div className="min-h-screen flex bg-amore-soft-pink/40 dark:bg-amore-dark-bg selection:bg-amore-pink/40 selection:text-amore-deep-purple">
       {/* Desktop Sidebar */}
       <div className="hidden lg:block h-screen sticky top-0">
         <AdminSidebar
           currentView={currentView}
-          onSelectView={(v) => {
-            setCurrentView(v);
-            setCurrentPage(1);
-          }}
+          selectedCategory={selectedCategory}
+          onSelectView={handleSelectView}
+          onSelectCategory={handleSelectCategory}
           pendingCount={stats.pending}
           onLogout={handleLogout}
           isLoggingOut={isLoggingOut}
@@ -243,9 +283,13 @@ export default function AdminDashboardPage() {
           <div className="relative w-64 h-full z-10">
             <AdminSidebar
               currentView={currentView}
+              selectedCategory={selectedCategory}
               onSelectView={(v) => {
-                setCurrentView(v);
-                setCurrentPage(1);
+                handleSelectView(v);
+                setMobileSidebarOpen(false);
+              }}
+              onSelectCategory={(cat) => {
+                handleSelectCategory(cat);
                 setMobileSidebarOpen(false);
               }}
               pendingCount={stats.pending}
@@ -258,7 +302,7 @@ export default function AdminDashboardPage() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Navbar Header */}
+        {/* Top Navbar Header - Professional & Minimal (Zero Amore branding) */}
         <header className="sticky top-0 z-30 flex items-center justify-between px-4 sm:px-8 h-16 sm:h-20 bg-white/60 dark:bg-amore-dark-bg/60 backdrop-blur-xl border-b border-amore-pink/20 dark:border-amore-lavender/10">
           <div className="flex items-center gap-3">
             <button
@@ -269,10 +313,10 @@ export default function AdminDashboardPage() {
             </button>
             <div>
               <h1 className="font-serif text-lg sm:text-2xl font-bold text-amore-deep-purple dark:text-white capitalize">
-                {currentView === 'overview' ? 'Dashboard Overview' : currentView.replace('-', ' ')}
+                {getHeaderTitle()}
               </h1>
               <span className="hidden sm:inline-block text-xs text-amore-deep-purple/50 dark:text-amore-lavender/50">
-                Amore Anonymous College Confessions
+                Confession Moderation & Management
               </span>
             </div>
           </div>
@@ -367,7 +411,7 @@ export default function AdminDashboardPage() {
                   <Search className="w-4 h-4 text-amore-deep-purple/40 dark:text-amore-lavender/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
-                    placeholder="Search by crush name, sender, or ID..."
+                    placeholder="Search by crush, sender, branch, or ID..."
                     value={searchQuery}
                     onChange={(e) => {
                       setSearchQuery(e.target.value);
@@ -383,8 +427,11 @@ export default function AdminDashboardPage() {
                   <select
                     value={selectedDepartment}
                     onChange={(e) => {
-                      setSelectedDepartment(e.target.value);
+                      const dept = e.target.value;
+                      setSelectedDepartment(dept);
+                      setSelectedBranch('');
                       setSelectedYear('');
+                      setSelectedCategory(dept ? { department: dept, branch: undefined } : null);
                       setCurrentPage(1);
                     }}
                     className="input-field text-xs py-2.5 px-3 w-auto cursor-pointer"
@@ -396,6 +443,27 @@ export default function AdminDashboardPage() {
                       </option>
                     ))}
                   </select>
+
+                  {/* B.Tech Branch filter: visible when B.Tech is selected */}
+                  {selectedDepartment === 'B.Tech' && (
+                    <select
+                      value={selectedBranch}
+                      onChange={(e) => {
+                        const br = e.target.value;
+                        setSelectedBranch(br);
+                        setSelectedCategory({ department: 'B.Tech', branch: br || undefined });
+                        setCurrentPage(1);
+                      }}
+                      className="input-field text-xs py-2.5 px-3 w-auto cursor-pointer font-medium"
+                    >
+                      <option value="">All Branches</option>
+                      {BTECH_BRANCHES.map((br) => (
+                        <option key={br} value={br}>
+                          {br}
+                        </option>
+                      ))}
+                    </select>
+                  )}
 
                   {/* Year filter (if department selected) */}
                   {selectedDepartment && (
@@ -445,7 +513,7 @@ export default function AdminDashboardPage() {
                   </div>
                 ) : confessions.length === 0 ? (
                   <div className="py-16 text-center space-y-2">
-                    <Heart className="w-10 h-10 mx-auto text-amore-pink/40" />
+                    <Shield className="w-10 h-10 mx-auto text-amore-pink/40" />
                     <p className="text-sm font-semibold text-amore-deep-purple/70 dark:text-amore-lavender/70">
                       No confessions found matching your filter criteria.
                     </p>
@@ -466,8 +534,10 @@ export default function AdminDashboardPage() {
                             <span className="text-xs text-amore-deep-purple/50 dark:text-amore-lavender/50">
                               from {item.sender_name?.trim() || 'Anonymous'}
                             </span>
+                            {/* Department & Branch Tag */}
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amore-pink/20 text-amore-deep-purple dark:text-amore-pink">
-                              {item.department} • {item.academic_year}
+                              {item.department}
+                              {item.branch ? ` (${item.branch})` : ''} • {item.academic_year}
                             </span>
                             <span
                               className={`px-2 py-0.5 rounded-full text-[10px] font-bold capitalize ${
@@ -629,4 +699,3 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
-

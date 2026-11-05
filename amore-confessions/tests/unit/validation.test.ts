@@ -1,11 +1,35 @@
 import { describe, it, expect } from 'vitest';
 import { confessionSchema } from '../../backend/validators/confession.validator';
 import { sanitizeInput, sanitizeObject } from '../../backend/middleware/validation.middleware';
-import { DEPARTMENT_YEARS, DEPARTMENTS } from '../../backend/config';
+import {
+  DEPARTMENTS,
+  BTECH_BRANCHES,
+  DEPARTMENT_YEARS,
+  BTechBranch,
+} from '../../backend/config';
 
-describe('Confession Validation & Department/Year Combinations', () => {
-  it('should accept valid confessions for all valid department and year combinations', () => {
-    for (const dept of DEPARTMENTS) {
+describe('Confession Validation & Department/Branch/Year Combinations', () => {
+  it('should accept valid confessions for all valid B.Tech branches and years', () => {
+    const btechYears = DEPARTMENT_YEARS['B.Tech'];
+    for (const branch of BTECH_BRANCHES) {
+      for (const year of btechYears) {
+        const input = {
+          crushName: 'Ananya',
+          department: 'B.Tech',
+          branch,
+          academicYear: year,
+          confessionMessage: 'I really admire your kindness and dedication in class.',
+          publicationConsent: true,
+        };
+        const result = confessionSchema.safeParse(input);
+        expect(result.success, `Failed for branch ${branch} year ${year}`).toBe(true);
+      }
+    }
+  });
+
+  it('should accept valid confessions for all non-B.Tech departments and years without branch', () => {
+    const nonBtechDepts = DEPARTMENTS.filter((d) => d !== 'B.Tech');
+    for (const dept of nonBtechDepts) {
       const years = DEPARTMENT_YEARS[dept];
       for (const year of years) {
         const input = {
@@ -16,8 +40,46 @@ describe('Confession Validation & Department/Year Combinations', () => {
           publicationConsent: true,
         };
         const result = confessionSchema.safeParse(input);
-        expect(result.success).toBe(true);
+        expect(result.success, `Failed for dept ${dept} year ${year}`).toBe(true);
       }
+    }
+  });
+
+  it('should reject B.Tech submissions missing a branch', () => {
+    const missingBranch = confessionSchema.safeParse({
+      crushName: 'Ananya',
+      department: 'B.Tech',
+      academicYear: '2nd',
+      confessionMessage: 'I really admire your kindness and dedication in class.',
+    });
+    expect(missingBranch.success).toBe(false);
+    if (!missingBranch.success) {
+      expect(missingBranch.error.issues.some((i) => i.path.includes('branch'))).toBe(true);
+    }
+  });
+
+  it('should reject B.Tech submissions with an invalid branch', () => {
+    const invalidBranch = confessionSchema.safeParse({
+      crushName: 'Ananya',
+      department: 'B.Tech',
+      branch: 'Aeronautical',
+      academicYear: '2nd',
+      confessionMessage: 'I really admire your kindness and dedication in class.',
+    });
+    expect(invalidBranch.success).toBe(false);
+  });
+
+  it('should reject non-B.Tech submissions that include a branch', () => {
+    const mbaWithBranch = confessionSchema.safeParse({
+      crushName: 'Rahul',
+      department: 'MBA',
+      branch: 'CSE',
+      academicYear: '1st',
+      confessionMessage: 'Great presentation in seminar yesterday!',
+    });
+    expect(mbaWithBranch.success).toBe(false);
+    if (!mbaWithBranch.success) {
+      expect(mbaWithBranch.error.issues.some((i) => i.path.includes('branch'))).toBe(true);
     }
   });
 
@@ -55,6 +117,7 @@ describe('Confession Validation & Department/Year Combinations', () => {
       senderName: 'Secret Admirer',
       crushName: 'Simran',
       department: 'B.Tech',
+      branch: 'CSE',
       academicYear: '2nd',
       confessionMessage: 'I love seeing your bright smile every morning!',
     });
@@ -64,6 +127,7 @@ describe('Confession Validation & Department/Year Combinations', () => {
       senderName: '',
       crushName: 'Simran',
       department: 'B.Tech',
+      branch: 'CSE',
       academicYear: '2nd',
       confessionMessage: 'I love seeing your bright smile every morning!',
     });
@@ -74,6 +138,7 @@ describe('Confession Validation & Department/Year Combinations', () => {
     const empty = confessionSchema.safeParse({
       crushName: 'Simran',
       department: 'B.Tech',
+      branch: 'CSE',
       academicYear: '2nd',
       confessionMessage: '         ',
     });
@@ -84,6 +149,7 @@ describe('Confession Validation & Department/Year Combinations', () => {
     const tooShort = confessionSchema.safeParse({
       crushName: 'Simran',
       department: 'B.Tech',
+      branch: 'CSE',
       academicYear: '2nd',
       confessionMessage: 'Hi crush',
     });
@@ -94,6 +160,7 @@ describe('Confession Validation & Department/Year Combinations', () => {
     const tooLong = confessionSchema.safeParse({
       crushName: 'Simran',
       department: 'B.Tech',
+      branch: 'CSE',
       academicYear: '2nd',
       confessionMessage: 'A'.repeat(2001),
     });
@@ -128,4 +195,3 @@ describe('Sanitization & XSS Prevention', () => {
     expect((clean as any).isAdmin).toBeUndefined();
   });
 });
-

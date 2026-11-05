@@ -29,6 +29,7 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const status = url.searchParams.get('status') as ConfessionStatus | null;
     const department = url.searchParams.get('department') || undefined;
+    const branch = url.searchParams.get('branch') || undefined;
     const year = url.searchParams.get('year') || undefined;
     const search = url.searchParams.get('search') || undefined;
     const sortByParam = url.searchParams.get('sortBy');
@@ -50,6 +51,7 @@ export async function GET(req: Request) {
     const result = await getConfessions(supabase, {
       status: status || undefined,
       department,
+      branch,
       year,
       search,
       sortBy,

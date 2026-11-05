@@ -20,18 +20,19 @@ $$ LANGUAGE plpgsql;
 -- Table: confessions
 -- ============================================================================
 CREATE TABLE confessions (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    sender_name     TEXT,
-    crush_name      TEXT NOT NULL,
-    department      TEXT NOT NULL,
-    academic_year   TEXT NOT NULL,
-    confession_message TEXT NOT NULL,
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sender_name         TEXT,
+    crush_name          TEXT NOT NULL,
+    department          TEXT NOT NULL,
+    branch              TEXT NULL,
+    academic_year       TEXT NOT NULL,
+    confession_message  TEXT NOT NULL,
     publication_consent BOOLEAN NOT NULL DEFAULT false,
-    status          TEXT NOT NULL DEFAULT 'pending',
+    status              TEXT NOT NULL DEFAULT 'pending',
     instagram_published BOOLEAN NOT NULL DEFAULT false,
-    published_at    TIMESTAMPTZ,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    published_at        TIMESTAMPTZ,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     -- Status must be one of the allowed values
     CONSTRAINT confessions_status_check
@@ -40,6 +41,13 @@ CREATE TABLE confessions (
     -- Department must be one of the allowed values
     CONSTRAINT confessions_department_check
         CHECK (department IN ('B.Tech', 'MBA', 'MCA', 'Pharm B', 'Pharm D')),
+
+    -- Branch constraint: Required for B.Tech (must be one of 5 branches), NULL for other departments
+    CONSTRAINT confessions_branch_check
+        CHECK (
+            (department = 'B.Tech' AND branch IN ('CSE', 'CSD', 'ECE', 'Civil', 'Mech'))
+            OR (department <> 'B.Tech' AND branch IS NULL)
+        ),
 
     -- Academic year must be one of the allowed values
     CONSTRAINT confessions_academic_year_check
@@ -80,6 +88,7 @@ CREATE TABLE moderation_logs (
 -- ============================================================================
 CREATE INDEX idx_confessions_status ON confessions(status);
 CREATE INDEX idx_confessions_department ON confessions(department);
+CREATE INDEX idx_confessions_branch ON confessions(branch);
 CREATE INDEX idx_confessions_created_at ON confessions(created_at DESC);
 CREATE INDEX idx_confessions_crush_name ON confessions(crush_name);
 CREATE INDEX idx_moderation_logs_confession_id ON moderation_logs(confession_id);

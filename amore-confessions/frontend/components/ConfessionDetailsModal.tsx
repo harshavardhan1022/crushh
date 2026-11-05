@@ -14,6 +14,7 @@ import {
   GraduationCap,
   Calendar,
   AlertTriangle,
+  GitBranch,
 } from 'lucide-react';
 import type { Confession } from '@/types';
 
@@ -85,6 +86,8 @@ export function ConfessionDetailsModal({
     }
   };
 
+  const isBTech = confession.department === 'B.Tech';
+
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md overflow-y-auto">
@@ -128,7 +131,26 @@ export function ConfessionDetailsModal({
                 Department
               </span>
               <span className="font-semibold text-amore-deep-purple dark:text-white">
-                {confession.department} ({confession.academic_year})
+                {confession.department}
+              </span>
+            </div>
+
+            {/* Branch Field: Displayed for B.Tech, or shows "Not Applicable" for other departments */}
+            <div className="p-3 rounded-xl bg-white/50 dark:bg-amore-dark-bg/50 border border-amore-pink/15">
+              <span className="text-amore-deep-purple/50 dark:text-amore-lavender/50 block text-[10px] uppercase">
+                Branch
+              </span>
+              <span className="font-semibold text-amore-deep-purple dark:text-white">
+                {isBTech ? confession.branch || 'Not Specified' : 'Not Applicable'}
+              </span>
+            </div>
+
+            <div className="p-3 rounded-xl bg-white/50 dark:bg-amore-dark-bg/50 border border-amore-pink/15">
+              <span className="text-amore-deep-purple/50 dark:text-amore-lavender/50 block text-[10px] uppercase">
+                Academic Year
+              </span>
+              <span className="font-semibold text-amore-deep-purple dark:text-white">
+                {confession.academic_year} Year
               </span>
             </div>
 
@@ -258,4 +280,3 @@ export function ConfessionDetailsModal({
     </AnimatePresence>
   );
 }
-

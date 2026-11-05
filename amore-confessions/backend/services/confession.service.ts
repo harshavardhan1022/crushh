@@ -16,6 +16,7 @@ export interface Confession {
   sender_name: string | null;
   crush_name: string;
   department: string;
+  branch: string | null;
   academic_year: string;
   confession_message: string;
   publication_consent: boolean;
@@ -29,6 +30,7 @@ export interface Confession {
 export interface ConfessionFilters {
   status?: ConfessionStatus;
   department?: string;
+  branch?: string;
   year?: string;
   search?: string;
   dateRange?: { from?: string; to?: string };
@@ -66,6 +68,7 @@ let devStore: Confession[] = [
     sender_name: 'Library Regular',
     crush_name: 'Ananya Sharma',
     department: 'B.Tech',
+    branch: 'CSE',
     academic_year: '3rd',
     confession_message:
       'Every time you sit by the quiet corner in the central library with your coffee and sketchbook, you brighten up the whole room. I have never had the courage to say hi in person, but your smile is genuinely unforgettable.',
@@ -81,6 +84,7 @@ let devStore: Confession[] = [
     sender_name: null,
     crush_name: 'Rohan Verma',
     department: 'MBA',
+    branch: null,
     academic_year: '1st',
     confession_message:
       'Your presentation on campus entrepreneurship was so inspiring! The confidence and humor you brought to the stage made everyone take notice. Hope you know how talented you are.',
@@ -96,6 +100,7 @@ let devStore: Confession[] = [
     sender_name: 'A Shy Classmate',
     crush_name: 'Pooja Reddy',
     department: 'Pharm B',
+    branch: null,
     academic_year: '2nd',
     confession_message:
       'To the girl in the lab coat who always helps others when experiments get tricky: you have the kindest heart on this entire campus.',
@@ -111,6 +116,7 @@ let devStore: Confession[] = [
     sender_name: null,
     crush_name: 'Karthik Nair',
     department: 'MCA',
+    branch: null,
     academic_year: '2nd',
     confession_message:
       'Watching you code during the hackathon was like watching an artist paint. Best of luck on final year placements!',
@@ -120,6 +126,70 @@ let devStore: Confession[] = [
     published_at: null,
     created_at: new Date(Date.now() - 3600000 * 72).toISOString(),
     updated_at: new Date(Date.now() - 3600000 * 72).toISOString(),
+  },
+  {
+    id: 'confession-005',
+    sender_name: 'Data Science Lab Peer',
+    crush_name: 'Sneha Patel',
+    department: 'B.Tech',
+    branch: 'CSD',
+    academic_year: '2nd',
+    confession_message:
+      'Your deep learning project explanation blew me away. You are brilliant, humble, and effortlessly graceful.',
+    publication_consent: true,
+    status: 'approved',
+    instagram_published: false,
+    published_at: null,
+    created_at: new Date(Date.now() - 3600000 * 5).toISOString(),
+    updated_at: new Date(Date.now() - 3600000 * 5).toISOString(),
+  },
+  {
+    id: 'confession-006',
+    sender_name: null,
+    crush_name: 'Aditya Rao',
+    department: 'B.Tech',
+    branch: 'ECE',
+    academic_year: '4th',
+    confession_message:
+      'Always see you in the robotics lab working late hours on microcontroller circuits. Rooting for you!',
+    publication_consent: true,
+    status: 'pending',
+    instagram_published: false,
+    published_at: null,
+    created_at: new Date(Date.now() - 3600000 * 8).toISOString(),
+    updated_at: new Date(Date.now() - 3600000 * 8).toISOString(),
+  },
+  {
+    id: 'confession-007',
+    sender_name: 'Survey Camp Friend',
+    crush_name: 'Meera Krishnan',
+    department: 'B.Tech',
+    branch: 'Civil',
+    academic_year: '3rd',
+    confession_message:
+      'Survey camp would have been completely boring without your laughter and jokes. You made the whole batch smile.',
+    publication_consent: true,
+    status: 'approved',
+    instagram_published: false,
+    published_at: null,
+    created_at: new Date(Date.now() - 3600000 * 10).toISOString(),
+    updated_at: new Date(Date.now() - 3600000 * 10).toISOString(),
+  },
+  {
+    id: 'confession-008',
+    sender_name: null,
+    crush_name: 'Vikram Singh',
+    department: 'B.Tech',
+    branch: 'Mech',
+    academic_year: '4th',
+    confession_message:
+      'To the Mech lead of the college BAJA racing team: the whole college cheered for you at the competition!',
+    publication_consent: true,
+    status: 'approved',
+    instagram_published: false,
+    published_at: null,
+    created_at: new Date(Date.now() - 3600000 * 14).toISOString(),
+    updated_at: new Date(Date.now() - 3600000 * 14).toISOString(),
   },
 ];
 
@@ -143,11 +213,12 @@ export async function submitConfession(
 
   const data = parsed.data;
 
-  // Sanitize text inputs
+  // Sanitize text inputs & set branch based on department
   const sanitized = {
     sender_name: data.senderName ? sanitizeInput(data.senderName) : null,
     crush_name: sanitizeInput(data.crushName),
     department: data.department,
+    branch: data.department === 'B.Tech' && data.branch ? data.branch : null,
     academic_year: data.academicYear,
     confession_message: sanitizeInput(data.confessionMessage),
     publication_consent: data.publicationConsent,
@@ -192,6 +263,7 @@ export async function getConfessions(
   const {
     status,
     department,
+    branch,
     year,
     search,
     dateRange,
@@ -210,6 +282,9 @@ export async function getConfessions(
     if (department) {
       list = list.filter((c) => c.department === department);
     }
+    if (branch) {
+      list = list.filter((c) => c.branch === branch);
+    }
     if (year) {
       list = list.filter((c) => c.academic_year === year);
     }
@@ -220,6 +295,7 @@ export async function getConfessions(
           c.crush_name.toLowerCase().includes(q) ||
           c.confession_message.toLowerCase().includes(q) ||
           (c.sender_name && c.sender_name.toLowerCase().includes(q)) ||
+          (c.branch && c.branch.toLowerCase().includes(q)) ||
           c.id.toLowerCase().includes(q)
       );
     }
@@ -254,13 +330,17 @@ export async function getConfessions(
     query = query.eq('department', department);
   }
 
+  if (branch) {
+    query = query.eq('branch', branch);
+  }
+
   if (year) {
     query = query.eq('academic_year', year);
   }
 
   if (search) {
     query = query.or(
-      `crush_name.ilike.%${search}%,confession_message.ilike.%${search}%,sender_name.ilike.%${search}%`
+      `crush_name.ilike.%${search}%,confession_message.ilike.%${search}%,sender_name.ilike.%${search}%,branch.ilike.%${search}%`
     );
   }
 
@@ -382,7 +462,6 @@ export async function deleteConfession(
     return { success: true };
   }
 
-  // Fetch confession before deleting for the log
   const { data: existing } = await supabase
     .from('confessions')
     .select('status')

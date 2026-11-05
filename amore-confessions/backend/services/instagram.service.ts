@@ -6,6 +6,7 @@ export interface ConfessionForImage {
   sender_name: string | null;
   crush_name: string;
   department: string;
+  branch?: string | null;
   academic_year: string;
   confession_message: string;
 }
@@ -28,6 +29,7 @@ export function generateConfessionImageHTML(confession: ConfessionForImage): str
 
   const crushName = escapeHtml(confession.crush_name);
   const department = escapeHtml(confession.department);
+  const branchText = confession.branch ? ` (${escapeHtml(confession.branch)})` : '';
   const year = escapeHtml(confession.academic_year);
   const message = escapeHtml(confession.confession_message);
   const sender = escapeHtml(senderDisplay);
@@ -222,7 +224,7 @@ export function generateConfessionImageHTML(confession: ConfessionForImage): str
         letter-spacing: 3px;
         text-transform: uppercase;
         margin-bottom: 24px;
-      ">${department} • ${year} Year</div>
+      ">${department}${branchText} • ${year} Year</div>
 
       <!-- Decorative bottom line -->
       <div style="

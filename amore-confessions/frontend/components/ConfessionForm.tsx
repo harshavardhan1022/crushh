@@ -7,7 +7,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Send, CheckCircle2, AlertCircle, Heart, Sparkles, RefreshCw } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { confessionSchema, type ConfessionInput } from '@backend/validators/confession.validator';
-import { DEPARTMENTS, DEPARTMENT_YEARS, MAX_CONFESSION_LENGTH, type Department } from '@backend/config';
+import {
+  DEPARTMENTS,
+  BTECH_BRANCHES,
+  BTECH_BRANCH_LABELS,
+  DEPARTMENT_YEARS,
+  MAX_CONFESSION_LENGTH,
+  type Department,
+  type BTechBranch,
+} from '@backend/config';
 import { LoadingAnimation } from '@/components/LoadingAnimation';
 
 export function ConfessionForm() {
@@ -28,6 +36,7 @@ export function ConfessionForm() {
       senderName: '',
       crushName: '',
       department: undefined,
+      branch: '',
       academicYear: undefined,
       confessionMessage: '',
       publicationConsent: false,
@@ -35,14 +44,25 @@ export function ConfessionForm() {
   });
 
   const selectedDepartment = watch('department') as Department | undefined;
+  const selectedBranch = watch('branch') as BTechBranch | undefined;
   const messageContent = watch('confessionMessage') || '';
   const charCount = messageContent.length;
 
-  // Handle department change: reset academic year
+  const isBTech = selectedDepartment === 'B.Tech';
+
+  // Handle department change: reset branch & academic year
   const handleDepartmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value as Department;
     setValue('department', val, { shouldValidate: true });
-    // Reset academic year whenever department changes
+    // Reset branch & academic year whenever department changes
+    setValue('branch', '' as any, { shouldValidate: false });
+    setValue('academicYear', '' as any, { shouldValidate: false });
+  };
+
+  // Handle branch change: reset academic year
+  const handleBranchChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value as BTechBranch;
+    setValue('branch', val, { shouldValidate: true });
     setValue('academicYear', '' as any, { shouldValidate: false });
   };
 
@@ -51,12 +71,18 @@ export function ConfessionForm() {
     setServerError(null);
 
     try {
+      // Clean data payload: ensure branch is null for non-B.Tech
+      const payload = {
+        ...data,
+        branch: data.department === 'B.Tech' && data.branch ? data.branch : null,
+      };
+
       const response = await fetch('/api/confessions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json();
@@ -185,73 +211,107 @@ export function ConfessionForm() {
               )}
             </div>
 
-            {/* Grid: Department & Academic Year */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {/* Field 2: Department (Required) */}
-              <div className="space-y-1.5">
+            {/* Department Selection */}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="department"
+                className="block text-sm font-semibold text-amore-deep-purple dark:text-white"
+              >
+                Department <span className="text-amore-pink">*</span>
+              </label>
+              <select
+                id="department"
+                disabled={isSubmitting}
+                defaultValue=""
+                {...register('department')}
+                onChange={handleDepartmentChange}
+                className="input-field appearance-none cursor-pointer"
+              >
+                <option value="" disabled>
+                  Select Department
+                </option>
+                {DEPARTMENTS.map((dept) => (
+                  <option key={dept} value={dept} className="bg-white dark:bg-amore-dark-bg text-black dark:text-white">
+                    {dept}
+                  </option>
+                ))}
+              </select>
+              {errors.department && (
+                <p className="text-xs text-red-500 mt-1">{errors.department.message}</p>
+              )}
+            </div>
+
+            {/* B.Tech Branch Dropdown (Visible only when B.Tech is selected) */}
+            {isBTech && (
+              <motion.div
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-1.5"
+              >
                 <label
-                  htmlFor="department"
+                  htmlFor="branch"
                   className="block text-sm font-semibold text-amore-deep-purple dark:text-white"
                 >
-                  Department <span className="text-amore-pink">*</span>
+                  Select Branch <span className="text-amore-pink">*</span>
                 </label>
                 <select
-                  id="department"
+                  id="branch"
                   disabled={isSubmitting}
                   defaultValue=""
-                  {...register('department')}
-                  onChange={handleDepartmentChange}
+                  {...register('branch')}
+                  onChange={handleBranchChange}
                   className="input-field appearance-none cursor-pointer"
                 >
                   <option value="" disabled>
-                    Select Department
+                    Select B.Tech Branch
                   </option>
-                  {DEPARTMENTS.map((dept) => (
-                    <option key={dept} value={dept} className="bg-white dark:bg-amore-dark-bg text-black dark:text-white">
-                      {dept}
+                  {BTECH_BRANCHES.map((b) => (
+                    <option key={b} value={b} className="bg-white dark:bg-amore-dark-bg text-black dark:text-white">
+                      {BTECH_BRANCH_LABELS[b]}
                     </option>
                   ))}
                 </select>
-                {errors.department && (
-                  <p className="text-xs text-red-500 mt-1">{errors.department.message}</p>
+                {errors.branch && (
+                  <p className="text-xs text-red-500 mt-1">{errors.branch.message}</p>
                 )}
-              </div>
+              </motion.div>
+            )}
 
-              {/* Field 3: Academic Year (Dynamically Generated & Dependent) */}
-              <div className="space-y-1.5">
+            {/* Academic Year Dropdown */}
+            {/* For B.Tech: Shown after branch is selected. For others: Shown after department is selected */}
+            {(isBTech ? !!selectedBranch : !!selectedDepartment) && (
+              <motion.div
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-1.5"
+              >
                 <label
                   htmlFor="academicYear"
                   className="block text-sm font-semibold text-amore-deep-purple dark:text-white"
                 >
                   Academic Year <span className="text-amore-pink">*</span>
                 </label>
-                {selectedDepartment ? (
-                  <select
-                    id="academicYear"
-                    disabled={isSubmitting}
-                    defaultValue=""
-                    {...register('academicYear')}
-                    className="input-field appearance-none cursor-pointer"
-                  >
-                    <option value="" disabled>
-                      Select Year
+                <select
+                  id="academicYear"
+                  disabled={isSubmitting}
+                  defaultValue=""
+                  {...register('academicYear')}
+                  className="input-field appearance-none cursor-pointer"
+                >
+                  <option value="" disabled>
+                    Select Year
+                  </option>
+                  {DEPARTMENT_YEARS[selectedDepartment as Department]?.map((year) => (
+                    <option key={year} value={year} className="bg-white dark:bg-amore-dark-bg text-black dark:text-white">
+                      {year === 'Graduated' ? 'Graduated' : `${year} Year`}
                     </option>
-                    {DEPARTMENT_YEARS[selectedDepartment]?.map((year) => (
-                      <option key={year} value={year} className="bg-white dark:bg-amore-dark-bg text-black dark:text-white">
-                        {year} Year
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <div className="input-field text-amore-deep-purple/40 dark:text-amore-lavender/40 cursor-not-allowed bg-black/5 dark:bg-white/5">
-                    Select department first
-                  </div>
-                )}
+                  ))}
+                </select>
                 {errors.academicYear && (
                   <p className="text-xs text-red-500 mt-1">{errors.academicYear.message}</p>
                 )}
-              </div>
-            </div>
+              </motion.div>
+            )}
 
             {/* Field 4: Crush Name (Required) */}
             <div className="space-y-1.5">
@@ -350,4 +410,3 @@ export function ConfessionForm() {
     </div>
   );
 }
-

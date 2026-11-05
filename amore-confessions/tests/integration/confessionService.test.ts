@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   submitConfession,
   getConfessions,
@@ -8,13 +8,25 @@ import {
   getStats,
 } from '../../backend/services/confession.service';
 
-describe('Confession Service Integration', () => {
-  it('should successfully submit a valid confession to database', async () => {
+describe('Confession Service Integration (Supabase Client Mode)', () => {
+  const originalEnv = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+  beforeEach(() => {
+    // Set a live-looking URL so service uses the passed-in SupabaseClient mock
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://live-college.supabase.co';
+  });
+
+  afterEach(() => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = originalEnv;
+  });
+
+  it('should successfully submit a valid B.Tech confession with branch to database', async () => {
     const mockConfession = {
       id: '123e4567-e89b-12d3-a456-426614174000',
       sender_name: 'Admirer',
       crush_name: 'Diya',
       department: 'B.Tech',
+      branch: 'CSE',
       academic_year: '3rd',
       confession_message: 'You are radiant and thoughtful.',
       publication_consent: true,
@@ -26,10 +38,13 @@ describe('Confession Service Integration', () => {
 
     const mockSupabase: any = {
       from: vi.fn().mockReturnValue({
-        insert: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({ data: mockConfession, error: null }),
-          }),
+        insert: vi.fn().mockImplementation((payload: any) => {
+          expect(payload.branch).toBe('CSE');
+          return {
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: { ...mockConfession, ...payload }, error: null }),
+            }),
+          };
         }),
       }),
     };
@@ -38,6 +53,7 @@ describe('Confession Service Integration', () => {
       senderName: 'Admirer',
       crushName: 'Diya',
       department: 'B.Tech',
+      branch: 'CSE',
       academicYear: '3rd',
       confessionMessage: 'You are radiant and thoughtful.',
       publicationConsent: true,
@@ -45,20 +61,92 @@ describe('Confession Service Integration', () => {
 
     expect(result.success).toBe(true);
     expect(result.data?.crush_name).toBe('Diya');
+    expect(result.data?.department).toBe('B.Tech');
+    expect(result.data?.branch).toBe('CSE');
     expect(result.data?.status).toBe('pending');
   });
 
-  it('should fail submission when input validation fails', async () => {
+  it('should sanitize non-B.Tech submission to have branch as null', async () => {
+    const mockSupabase: any = {
+      from: vi.fn().mockReturnValue({
+        insert: vi.fn().mockImplementation((payload: any) => {
+          expect(payload.branch).toBeNull();
+          return {
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: { id: 'test-mba-id', ...payload, status: 'pending' },
+                error: null,
+              }),
+            }),
+          };
+        }),
+      }),
+    };
+
+    const result = await submitConfession(mockSupabase, {
+      crushName: 'Rohan',
+      department: 'MBA',
+      academicYear: '2nd',
+      confessionMessage: 'You are inspiring and lead the class brilliantly.',
+      publicationConsent: true,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.branch).toBeNull();
+  });
+
+  it('should fail submission when input validation fails (e.g. B.Tech missing branch)', async () => {
     const mockSupabase: any = {};
     const result = await submitConfession(mockSupabase, {
-      crushName: '', // Invalid empty crush name
+      crushName: 'Diya',
       department: 'B.Tech',
+      // branch missing
       academicYear: '3rd',
-      confessionMessage: 'Short',
+      confessionMessage: 'You are radiant and thoughtful.',
     } as any);
 
     expect(result.success).toBe(false);
     expect(result.error).toBeDefined();
+  });
+
+  it('should query confessions with department and branch filter when provided', async () => {
+    const mockQueryBuilder: any = {
+      order: vi.fn().mockReturnThis(),
+      range: vi.fn().mockResolvedValue({
+        data: [
+          {
+            id: 'conf-1',
+            department: 'B.Tech',
+            branch: 'ECE',
+            crush_name: 'Tara',
+            academic_year: '4th',
+            confession_message: 'Always loved seeing you in robotics lab.',
+            status: 'approved',
+          },
+        ],
+        count: 1,
+        error: null,
+      }),
+      eq: vi.fn().mockReturnThis(),
+      ilike: vi.fn().mockReturnThis(),
+    };
+
+    const mockSupabase: any = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue(mockQueryBuilder),
+      }),
+    };
+
+    const result = await getConfessions(mockSupabase, {
+      department: 'B.Tech',
+      branch: 'ECE',
+    });
+
+    expect(result.success).toBe(true);
+    expect(mockQueryBuilder.eq).toHaveBeenCalledWith('department', 'B.Tech');
+    expect(mockQueryBuilder.eq).toHaveBeenCalledWith('branch', 'ECE');
+    expect(result.data?.length).toBe(1);
+    expect(result.data?.[0].branch).toBe('ECE');
   });
 
   it('should update confession status and log the moderation action', async () => {
@@ -142,7 +230,6 @@ describe('Confession Service Integration', () => {
         select: vi.fn().mockImplementation((_fields: string, opts?: any) => {
           return {
             eq: vi.fn().mockResolvedValue({ count: 5, error: null }),
-            // Total call doesn't have .eq
             then: (resolve: any) => resolve({ count: 20, error: null }),
           };
         }),
@@ -154,3 +241,25 @@ describe('Confession Service Integration', () => {
   });
 });
 
+describe('Confession Service In-Memory Dev Store Mode', () => {
+  const originalEnv = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+  beforeEach(() => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://placeholder.supabase.co';
+  });
+
+  afterEach(() => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = originalEnv;
+  });
+
+  it('should filter mock confessions by branch in dev store', async () => {
+    const mockSupabase: any = {};
+    const result = await getConfessions(mockSupabase, {
+      department: 'B.Tech',
+      branch: 'CSE',
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.every((c) => c.branch === 'CSE')).toBe(true);
+  });
+});

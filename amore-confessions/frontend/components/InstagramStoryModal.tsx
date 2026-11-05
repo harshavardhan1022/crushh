@@ -164,7 +164,11 @@ export function InstagramStoryModal({
       ctx.fillStyle = 'rgba(247, 182, 210, 0.65)';
       ctx.font = 'bold 26px sans-serif';
       ctx.letterSpacing = '3px';
-      ctx.fillText(`${confession.department.toUpperCase()} • ${confession.academic_year.toUpperCase()} YEAR`, 540, 1470);
+      const deptDisplay =
+        confession.department === 'B.Tech' && confession.branch
+          ? `B.TECH (${confession.branch.toUpperCase()}) • ${confession.academic_year.toUpperCase()} YEAR`
+          : `${confession.department.toUpperCase()} • ${confession.academic_year.toUpperCase()} YEAR`;
+      ctx.fillText(deptDisplay, 540, 1470);
 
       // 8. Bottom Footer
       ctx.fillStyle = 'rgba(247, 182, 210, 0.4)';
@@ -277,7 +281,8 @@ export function InstagramStoryModal({
                     — {senderDisplay} —
                   </div>
                   <div className="text-[8px] uppercase tracking-wider text-amore-pink/60">
-                    {confession.department} • {confession.academic_year} Year
+                    {confession.department}
+                    {confession.branch ? ` (${confession.branch})` : ''} • {confession.academic_year} Year
                   </div>
                   <div className="text-[7px] text-white/30 tracking-widest pt-1">
                     amore.college
@@ -303,7 +308,10 @@ export function InstagramStoryModal({
                   </div>
                   <div>
                     <span className="text-amore-deep-purple/50 dark:text-amore-lavender/50">Department: </span>
-                    <span className="font-bold text-amore-deep-purple dark:text-white">{confession.department} ({confession.academic_year} Year)</span>
+                    <span className="font-bold text-amore-deep-purple dark:text-white">
+                      {confession.department}
+                      {confession.branch ? ` (${confession.branch})` : ''} ({confession.academic_year} Year)
+                    </span>
                   </div>
                   <div>
                     <span className="text-amore-deep-purple/50 dark:text-amore-lavender/50">Instagram Status: </span>
