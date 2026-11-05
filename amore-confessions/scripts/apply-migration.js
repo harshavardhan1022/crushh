@@ -15,8 +15,9 @@ async function run() {
       connectionString = arg;
     } else {
       // Argument is the database password
+      const dbHost = process.env.DB_HOST || 'db.pngpxlzvkndmwgwjpirr.supabase.co';
       const encodedPassword = encodeURIComponent(arg);
-      connectionString = `postgresql://postgres:${encodedPassword}@db.pngpxlzvkndmwgwjpirr.supabase.co:5432/postgres`;
+      connectionString = `postgresql://postgres:${encodedPassword}@${dbHost}:5432/postgres`;
     }
   }
 
@@ -60,3 +61,4 @@ async function run() {
 }
 
 run();
+

@@ -185,5 +185,18 @@ CREATE POLICY "service_role_full_access_moderation_logs"
     USING (true)
     WITH CHECK (true);
 
--- 12. Reload PostgREST Schema Cache Immediately
+-- 12. Enable Supabase Realtime Broadcast for Confessions Table
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables
+        WHERE pubname = 'supabase_realtime' AND tablename = 'confessions'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE confessions;
+    END IF;
+END $$;
+ALTER TABLE confessions REPLICA IDENTITY FULL;
+
+-- 13. Reload PostgREST Schema Cache Immediately
 NOTIFY pgrst, 'reload schema';
+

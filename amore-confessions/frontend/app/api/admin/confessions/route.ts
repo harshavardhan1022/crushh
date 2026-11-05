@@ -10,6 +10,7 @@ import { getConfessions } from '@backend/services/confession.service';
 import type { ConfessionStatus } from '@backend/config';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(req: Request) {
   try {
@@ -78,13 +79,21 @@ export async function GET(req: Request) {
       `[API /api/admin/confessions] Returning ${result.data?.length ?? 0} confessions (total matching: ${result.count ?? 0})`
     );
 
-    return NextResponse.json({
-      success: true,
-      data: result.data,
-      count: result.count,
-      page,
-      limit,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        data: result.data,
+        count: result.count,
+        page,
+        limit,
+      },
+      {
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        },
+      }
+    );
   } catch (error: any) {
     console.error('[API /api/admin/confessions] Error:', error);
     return NextResponse.json(

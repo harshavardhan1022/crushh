@@ -22,7 +22,9 @@ import {
   ChevronRight,
   Shield,
   Layers,
+  AlertCircle,
 } from 'lucide-react';
+import { getSupabaseClient } from '@/lib/supabase-client';
 import { AdminSidebar, type DashboardView, type CategorySelection } from '@/components/AdminSidebar';
 import { ConfessionDetailsModal } from '@/components/ConfessionDetailsModal';
 import { InstagramStoryModal } from '@/components/InstagramStoryModal';
@@ -50,6 +52,10 @@ export default function AdminDashboardPage() {
   const [confessions, setConfessions] = useState<Confession[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [realtimeStatus, setRealtimeStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting');
+  const [lastSynced, setLastSynced] = useState<Date | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Filters & Search
@@ -75,11 +81,12 @@ export default function AdminDashboardPage() {
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
-  // Fetch Stats
+  // Fetch Stats (with cache: 'no-store')
   const fetchStats = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/stats', {
         headers: getAuthHeader(),
+        cache: 'no-store',
       });
       if (res.status === 401 || res.status === 403) {
         router.push('/admin/login');
@@ -94,9 +101,10 @@ export default function AdminDashboardPage() {
     }
   }, [router]);
 
-  // Fetch Confessions
+  // Fetch Confessions (with cache: 'no-store' and error handling)
   const fetchConfessions = useCallback(async () => {
     setIsLoading(true);
+    setFetchError(null);
     try {
       const params = new URLSearchParams();
 
@@ -116,6 +124,7 @@ export default function AdminDashboardPage() {
 
       const res = await fetch(`/api/admin/confessions?${params.toString()}`, {
         headers: getAuthHeader(),
+        cache: 'no-store',
       });
 
       if (res.status === 401 || res.status === 403) {
@@ -127,13 +136,32 @@ export default function AdminDashboardPage() {
       if (data.success) {
         setConfessions(data.data || []);
         setTotalCount(data.count || 0);
+        setFetchError(null);
+        setLastSynced(new Date());
+      } else {
+        setFetchError(data.error || 'Failed to load confessions from database');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load confessions:', err);
+      setFetchError(err.message || 'Network error fetching confessions');
     } finally {
       setIsLoading(false);
     }
   }, [currentView, selectedDepartment, selectedBranch, selectedYear, searchQuery, sortOrder, currentPage, router]);
+
+  // Manual Refresh Handler
+  const handleManualRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    setFetchError(null);
+    try {
+      await Promise.all([fetchStats(), fetchConfessions()]);
+      setLastSynced(new Date());
+    } catch (err: any) {
+      setFetchError(err.message || 'Failed to refresh data');
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [fetchStats, fetchConfessions]);
 
   // Initial load & fetch on filter changes
   useEffect(() => {
@@ -141,23 +169,68 @@ export default function AdminDashboardPage() {
     fetchConfessions();
   }, [fetchStats, fetchConfessions]);
 
-  // Reliable Auto-Refresh: Window focus & periodic poll (15s when active tab)
+  // Supabase Realtime Subscription: Instantly reflect new student submissions & moderation
   useEffect(() => {
-    const handleFocus = () => {
-      fetchStats();
-      fetchConfessions();
-    };
-    window.addEventListener('focus', handleFocus);
+    const supabase = getSupabaseClient();
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('admin-token') || localStorage.getItem('amore-admin-token')
+        : null;
 
-    const interval = setInterval(() => {
+    if (token && supabase.realtime) {
+      supabase.realtime.setAuth(token);
+    }
+
+    const channel = supabase
+      .channel('admin-confessions-realtime-sub')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'confessions',
+        },
+        (payload) => {
+          console.log('[Admin Realtime] Table change detected:', payload.eventType);
+          fetchStats();
+          fetchConfessions();
+          setLastSynced(new Date());
+        }
+      )
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          setRealtimeStatus('connected');
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          setRealtimeStatus('disconnected');
+          if (err) console.warn('[Admin Realtime] Realtime subscription issue:', err);
+        } else {
+          setRealtimeStatus('connecting');
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchStats, fetchConfessions]);
+
+  // Auto-Refresh: Window focus, tab visibility & 30s background polling
+  useEffect(() => {
+    const handleSync = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         fetchStats();
         fetchConfessions();
+        setLastSynced(new Date());
       }
-    }, 15000);
+    };
+
+    window.addEventListener('focus', handleSync);
+    document.addEventListener('visibilitychange', handleSync);
+
+    const interval = setInterval(handleSync, 30000);
 
     return () => {
-      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('focus', handleSync);
+      document.removeEventListener('visibilitychange', handleSync);
       clearInterval(interval);
     };
   }, [fetchStats, fetchConfessions]);
@@ -186,12 +259,18 @@ export default function AdminDashboardPage() {
   // Handle Moderation Status Change
   const handleStatusChange = async (id: string, status: 'approved' | 'rejected') => {
     try {
+      // Optimistically update status
+      setConfessions((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, status, updated_at: new Date().toISOString() } : c))
+      );
+
       const res = await fetch(`/api/admin/confessions/${id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           ...getAuthHeader(),
         },
+        cache: 'no-store',
         body: JSON.stringify({ status }),
       });
 
@@ -201,19 +280,22 @@ export default function AdminDashboardPage() {
       }
 
       // Refresh list & stats
-      fetchStats();
-      fetchConfessions();
+      await Promise.all([fetchStats(), fetchConfessions()]);
     } catch (err: any) {
       alert(err.message || 'Error updating confession');
+      fetchConfessions();
     }
   };
 
   // Handle Delete
   const handleDelete = async (id: string) => {
     try {
+      setConfessions((prev) => prev.filter((c) => c.id !== id));
+
       const res = await fetch(`/api/admin/confessions/${id}`, {
         method: 'DELETE',
         headers: getAuthHeader(),
+        cache: 'no-store',
       });
 
       const data = await res.json();
@@ -221,10 +303,10 @@ export default function AdminDashboardPage() {
         throw new Error(data.error || 'Failed to delete confession');
       }
 
-      fetchStats();
-      fetchConfessions();
+      await Promise.all([fetchStats(), fetchConfessions()]);
     } catch (err: any) {
       alert(err.message || 'Error deleting confession');
+      fetchConfessions();
     }
   };
 
@@ -237,6 +319,7 @@ export default function AdminDashboardPage() {
           'Content-Type': 'application/json',
           ...getAuthHeader(),
         },
+        cache: 'no-store',
         body: JSON.stringify({ action: 'publish' }),
       });
 
@@ -245,10 +328,10 @@ export default function AdminDashboardPage() {
         throw new Error(data.error || 'Failed to mark as published');
       }
 
-      fetchStats();
-      fetchConfessions();
+      await Promise.all([fetchStats(), fetchConfessions()]);
     } catch (err: any) {
       alert(err.message || 'Error updating publish status');
+      fetchConfessions();
     }
   };
 
@@ -348,16 +431,41 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                fetchStats();
-                fetchConfessions();
-              }}
-              className="p-2.5 rounded-xl bg-white/50 dark:bg-amore-dark-card/50 border border-amore-pink/20 hover:bg-white/80 dark:hover:bg-amore-dark-card text-amore-deep-purple dark:text-white transition-colors"
-              title="Refresh Data"
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Realtime Live Sync status badge */}
+            <div
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
+                realtimeStatus === 'connected'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                  : 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800'
+              }`}
+              title={
+                realtimeStatus === 'connected'
+                  ? 'Supabase Realtime active: confessions update automatically'
+                  : 'Polling active (updates every 30s or on page focus)'
+              }
             >
-              <RefreshCw className="w-4 h-4" />
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  realtimeStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+                }`}
+              />
+              <span className="hidden sm:inline">
+                {realtimeStatus === 'connected' ? 'Live Sync' : 'Auto-Sync'}
+              </span>
+            </div>
+
+            {/* Manual Refresh Button */}
+            <button
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              className="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-xl bg-white/70 dark:bg-amore-dark-card/70 border border-amore-pink/30 hover:bg-white dark:hover:bg-amore-dark-card text-amore-deep-purple dark:text-white transition-all shadow-sm disabled:opacity-60 cursor-pointer"
+              title="Sync latest confessions from Supabase"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-amore-pink' : ''}`} />
+              <span className="text-xs font-semibold">
+                {isRefreshing ? 'Syncing...' : 'Refresh'}
+              </span>
             </button>
 
             <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-amore-pink/20 dark:border-amore-lavender/10">
@@ -373,6 +481,26 @@ export default function AdminDashboardPage() {
 
         {/* Content Body */}
         <main className="flex-1 p-4 sm:p-8 space-y-6 max-w-7xl w-full mx-auto">
+          {/* Error Banner with Retry */}
+          {fetchError && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/50 flex items-center justify-between gap-3 text-red-600 dark:text-red-400 text-xs sm:text-sm"
+            >
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{fetchError}</span>
+              </div>
+              <button
+                onClick={handleManualRefresh}
+                className="px-3 py-1 rounded-lg bg-red-100 dark:bg-red-900/50 hover:bg-red-200 text-red-700 dark:text-red-300 font-semibold cursor-pointer text-xs transition-colors"
+              >
+                Retry
+              </button>
+            </motion.div>
+          )}
+
           {/* Settings Tab */}
           {currentView === 'settings' ? (
             <AdminSettings />

@@ -9,6 +9,7 @@ import { extractAuthToken, verifyAdmin } from '@backend/middleware/auth.middlewa
 import { getStats } from '@backend/services/confession.service';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(req: Request) {
   try {
@@ -31,10 +32,18 @@ export async function GET(req: Request) {
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      data: result.data,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        data: result.data,
+      },
+      {
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        },
+      }
+    );
   } catch (error: any) {
     console.error('[API /api/admin/stats] Error:', error);
     return NextResponse.json(
