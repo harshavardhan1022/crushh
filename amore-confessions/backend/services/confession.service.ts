@@ -1,5 +1,5 @@
 // ============================================================================
-// Amore Anonymous College Confession Platform - Confession Service
+// Anonymous College Confession Platform - Confession Service
 // ============================================================================
 
 import { SupabaseClient } from '@supabase/supabase-js';
@@ -57,12 +57,15 @@ export interface ConfessionStats {
 
 // ---------------------------------------------------------------------------
 // In-Memory Dev Store (Active only when Supabase is in placeholder/mock mode)
+// Uses globalThis to ensure shared state across independent Next.js API route bundles
 // ---------------------------------------------------------------------------
-const isPlaceholderMode = () =>
+const GLOBAL_DEV_STORE_KEY = '__collegeConfessionsDevStore__';
+
+export const isPlaceholderMode = () =>
   !process.env.NEXT_PUBLIC_SUPABASE_URL ||
   process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder');
 
-let devStore: Confession[] = [
+const initialSeedConfessions: Confession[] = [
   {
     id: 'confession-001',
     sender_name: 'Library Regular',
@@ -193,6 +196,20 @@ let devStore: Confession[] = [
   },
 ];
 
+export function getDevStore(): Confession[] {
+  const g = globalThis as unknown as { [GLOBAL_DEV_STORE_KEY]?: Confession[] };
+  if (!g[GLOBAL_DEV_STORE_KEY]) {
+    // Clone initial seeds so mutations don't alter base template
+    g[GLOBAL_DEV_STORE_KEY] = JSON.parse(JSON.stringify(initialSeedConfessions));
+  }
+  return g[GLOBAL_DEV_STORE_KEY]!;
+}
+
+export function setDevStore(newList: Confession[]) {
+  const g = globalThis as unknown as { [GLOBAL_DEV_STORE_KEY]?: Confession[] };
+  g[GLOBAL_DEV_STORE_KEY] = newList;
+}
+
 // ---------------------------------------------------------------------------
 // Service Functions
 // ---------------------------------------------------------------------------
@@ -226,7 +243,7 @@ export async function submitConfession(
     instagram_published: false,
   };
 
-  // Dev fallback
+  // Dev fallback using process-wide globalThis store
   if (isPlaceholderMode()) {
     const newConfession: Confession = {
       ...sanitized,
@@ -235,7 +252,7 @@ export async function submitConfession(
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    devStore.unshift(newConfession);
+    getDevStore().unshift(newConfession);
     return { success: true, data: newConfession };
   }
 
@@ -247,6 +264,26 @@ export async function submitConfession(
 
   if (error) {
     console.error('[confession.service] submitConfession error:', error);
+    // If SELECT was denied under strict RLS (anonymous INSERT only), fall back to insert without select
+    if (
+      error.code === 'PGRST116' ||
+      error.message?.includes('0 rows') ||
+      error.message?.includes('permission denied')
+    ) {
+      const fallbackInsert = await supabase.from('confessions').insert(sanitized);
+      if (!fallbackInsert.error) {
+        return {
+          success: true,
+          data: {
+            ...sanitized,
+            id: `confession-${Date.now()}`,
+            published_at: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          } as Confession,
+        };
+      }
+    }
     return { success: false, error: error.message };
   }
 
@@ -274,7 +311,7 @@ export async function getConfessions(
   } = filters;
 
   if (isPlaceholderMode()) {
-    let list = [...devStore];
+    let list = [...getDevStore()];
 
     if (status) {
       list = list.filter((c) => c.status === status);
@@ -382,7 +419,7 @@ export async function getConfessionById(
   id: string
 ): Promise<ServiceResult<Confession>> {
   if (isPlaceholderMode()) {
-    const item = devStore.find((c) => c.id === id);
+    const item = getDevStore().find((c) => c.id === id);
     if (!item) return { success: false, error: 'Confession not found' };
     return { success: true, data: item };
   }
@@ -412,7 +449,7 @@ export async function updateConfessionStatus(
   previousStatus: string
 ): Promise<ServiceResult<Confession>> {
   if (isPlaceholderMode()) {
-    const item = devStore.find((c) => c.id === id);
+    const item = getDevStore().find((c) => c.id === id);
     if (!item) return { success: false, error: 'Confession not found' };
     item.status = newStatus;
     item.updated_at = new Date().toISOString();
@@ -458,7 +495,7 @@ export async function deleteConfession(
   adminId: string
 ): Promise<ServiceResult<void>> {
   if (isPlaceholderMode()) {
-    devStore = devStore.filter((c) => c.id !== id);
+    setDevStore(getDevStore().filter((c) => c.id !== id));
     return { success: true };
   }
 
@@ -500,7 +537,7 @@ export async function markAsPublished(
   adminId: string
 ): Promise<ServiceResult<Confession>> {
   if (isPlaceholderMode()) {
-    const item = devStore.find((c) => c.id === id);
+    const item = getDevStore().find((c) => c.id === id);
     if (!item) return { success: false, error: 'Confession not found' };
     item.instagram_published = true;
     item.published_at = new Date().toISOString();
@@ -545,14 +582,15 @@ export async function getStats(
   supabase: SupabaseClient
 ): Promise<ServiceResult<ConfessionStats>> {
   if (isPlaceholderMode()) {
+    const store = getDevStore();
     return {
       success: true,
       data: {
-        total: devStore.length,
-        pending: devStore.filter((c) => c.status === 'pending').length,
-        approved: devStore.filter((c) => c.status === 'approved').length,
-        rejected: devStore.filter((c) => c.status === 'rejected').length,
-        published: devStore.filter((c) => c.instagram_published).length,
+        total: store.length,
+        pending: store.filter((c) => c.status === 'pending').length,
+        approved: store.filter((c) => c.status === 'approved').length,
+        rejected: store.filter((c) => c.status === 'rejected').length,
+        published: store.filter((c) => c.instagram_published).length,
       },
     };
   }

@@ -1,5 +1,5 @@
 // ============================================================================
-// Amore Anonymous College Confession Platform - Server-Side Supabase Client
+// Anonymous College Confession Platform - Server-Side Supabase Client
 // ============================================================================
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';

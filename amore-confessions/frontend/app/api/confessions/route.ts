@@ -1,5 +1,5 @@
 // ============================================================================
-// Amore Anonymous College Confession Platform - Confession Submission Route
+// Anonymous College Confession Platform - Confession Submission Route
 // POST /api/confessions
 // ============================================================================
 
@@ -21,6 +21,7 @@ export async function POST(req: Request) {
     // 2. Check rate limit (5 submissions per minute)
     const rateLimit = checkRateLimit(ip, RATE_LIMIT.maxRequests, RATE_LIMIT.windowMs);
     if (!rateLimit.allowed) {
+      console.warn(`[API /api/confessions] Rate limit exceeded for IP: ${ip.substring(0, 7)}...`);
       return NextResponse.json(
         {
           success: false,
@@ -53,16 +54,24 @@ export async function POST(req: Request) {
       );
     }
 
+    const payload = body as Record<string, unknown>;
+    console.log(
+      `[API /api/confessions] Submission received: department=${payload.department}, branch=${payload.branch ?? 'N/A'}, year=${payload.academicYear}`
+    );
+
     // 4. Submit via backend confession service
     const supabase = createAdminClient();
-    const result = await submitConfession(supabase, body as any);
+    const result = await submitConfession(supabase, payload as any);
 
     if (!result.success) {
+      console.warn(`[API /api/confessions] Validation/Storage failed: ${result.error}`);
       return NextResponse.json(
         { success: false, error: result.error || 'Failed to submit confession' },
         { status: 400 }
       );
     }
+
+    console.log(`[API /api/confessions] Successfully stored confession record (id=${result.data?.id})`);
 
     // 5. Safe acknowledgement response: Do not leak submission details or database ID
     return NextResponse.json(

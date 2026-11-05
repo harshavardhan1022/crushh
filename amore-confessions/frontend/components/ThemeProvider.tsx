@@ -15,7 +15,9 @@ function getInitialTheme(): Theme {
   if (typeof window === 'undefined') return 'light';
 
   try {
-    const stored = localStorage.getItem('amore-theme') as Theme | null;
+    const stored =
+      (localStorage.getItem('theme') as Theme | null) ||
+      (localStorage.getItem('amore-theme') as Theme | null);
     if (stored === 'dark' || stored === 'light') return stored;
   } catch {
     // localStorage unavailable
@@ -47,6 +49,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
+      localStorage.setItem('theme', theme);
       localStorage.setItem('amore-theme', theme);
     } catch {
       // localStorage unavailable

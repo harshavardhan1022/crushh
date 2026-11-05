@@ -22,3 +22,4 @@ CHECK (
 
 -- 3. Create index for fast branch-level filtering in queries
 CREATE INDEX IF NOT EXISTS idx_confessions_branch ON confessions(branch);
+

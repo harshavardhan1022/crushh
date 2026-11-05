@@ -1,5 +1,5 @@
 // ============================================================================
-// Amore Anonymous College Confession Platform - Admin Service
+// Anonymous College Confession Platform - Admin Service
 // ============================================================================
 
 import { SupabaseClient } from '@supabase/supabase-js';

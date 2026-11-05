@@ -19,7 +19,7 @@ export default function HomePage() {
               The Journey of a Confession
             </h2>
             <p className="font-serif text-3xl sm:text-4xl font-bold text-amore-deep-purple dark:text-white">
-              How Amore Works
+              How It Works
             </p>
             <p className="text-sm sm:text-base text-amore-deep-purple/70 dark:text-amore-lavender/70">
               Thoughtfully built for college students to express themselves with absolute peace of mind.
@@ -97,9 +97,9 @@ export default function HomePage() {
       <footer className="border-t border-amore-pink/20 dark:border-amore-lavender/10 bg-white/40 dark:bg-amore-dark-bg/40 backdrop-blur-md py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <div className="flex items-center gap-2">
-            <span className="font-serif font-bold text-lg text-amore-deep-purple dark:text-white">Amore</span>
+            <span className="font-serif font-bold text-lg text-amore-deep-purple dark:text-white">College Confessions</span>
             <span className="text-xs text-amore-deep-purple/50 dark:text-amore-lavender/50">
-              • Anonymous College Confession Platform
+              • Anonymous Student Platform
             </span>
           </div>
 

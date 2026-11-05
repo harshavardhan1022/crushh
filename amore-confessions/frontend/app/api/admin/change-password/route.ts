@@ -1,5 +1,5 @@
 // ============================================================================
-// Amore Anonymous College Confession Platform - Admin Change Password Route
+// Anonymous College Confession Platform - Admin Change Password Route
 // POST /api/admin/change-password
 // ============================================================================
 

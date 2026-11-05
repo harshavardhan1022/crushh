@@ -4,7 +4,7 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import { HeartCursor } from '@/components/HeartCursor';
 
 export const metadata: Metadata = {
-  title: 'Amore – Anonymous College Confessions',
+  title: 'College Confessions – Anonymous Student Platform',
   description: 'Share your feelings anonymously. Some feelings deserve to be heard.',
   keywords: ['confession', 'anonymous', 'college', 'feelings'],
 };
@@ -29,7 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: `
               (function() {
                 try {
-                  var theme = localStorage.getItem('amore-theme');
+                  var theme = localStorage.getItem('theme') || localStorage.getItem('amore-theme');
                   if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                     document.documentElement.classList.add('dark');
                   }

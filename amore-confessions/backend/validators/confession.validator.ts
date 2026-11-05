@@ -1,5 +1,5 @@
 // ============================================================================
-// Amore Anonymous College Confession Platform - Confession Validator
+// Anonymous College Confession Platform - Confession Validator
 // ============================================================================
 
 import { z } from 'zod';

@@ -1,5 +1,5 @@
 -- ============================================================================
--- Amore Anonymous College Confession Platform - Row Level Security Policies
+-- Anonymous College Confession Platform - Row Level Security Policies
 -- ============================================================================
 
 -- ============================================================================

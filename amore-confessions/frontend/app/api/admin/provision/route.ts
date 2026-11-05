@@ -1,5 +1,5 @@
 // ============================================================================
-// Amore Anonymous College Confession Platform - Secure Admin Provisioning
+// Anonymous College Confession Platform - Secure Admin Provisioning
 // POST /api/admin/provision
 //
 // Protected endpoint: Only callable with the secret SUPABASE_SERVICE_ROLE_KEY

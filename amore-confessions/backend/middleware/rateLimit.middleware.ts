@@ -1,5 +1,5 @@
 // ============================================================================
-// Amore Anonymous College Confession Platform - Rate Limit Middleware
+// Anonymous College Confession Platform - Rate Limit Middleware
 // ============================================================================
 
 interface RateLimitEntry {

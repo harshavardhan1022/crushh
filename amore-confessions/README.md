@@ -1,8 +1,8 @@
-# Amore – Anonymous College Confessions Platform
+# Anonymous College Confessions Platform
 
 > "Some feelings deserve to be heard."
 
-**Amore** is a modern, romantic, production-ready anonymous confession platform created for college students. Students can share their feelings for campus crushes safely and completely anonymously without creating an account. Submissions are reviewed by an authorized administrator who moderates content and generates 1080×1920 Instagram Story cards for the college Instagram page.
+**College Confessions** is a modern, romantic, production-ready anonymous confession platform created for college students. Students can share their feelings for campus crushes safely and completely anonymously without creating an account. Submissions are reviewed by an authorized administrator who moderates content and generates 1080×1920 Instagram Story cards for the college Instagram page.
 
 ---
 
@@ -183,7 +183,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 # Initial Administrator Credentials
-ADMIN_EMAIL=admin@amore.college
+ADMIN_EMAIL=admin@college.edu
 INITIAL_ADMIN_PASSWORD=YourStrongSecretPassword123!
 
 # Application URL
@@ -223,7 +223,7 @@ The response confirms:
 {
   "success": true,
   "message": "Admin user provisioned successfully",
-  "email": "admin@amore.college"
+  "email": "admin@college.edu"
 }
 ```
 

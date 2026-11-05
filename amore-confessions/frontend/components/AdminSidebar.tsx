@@ -75,7 +75,7 @@ export function AdminSidebar({
 
   return (
     <aside className="w-64 flex flex-col justify-between h-full bg-white/70 dark:bg-amore-dark-card/80 backdrop-blur-2xl border-r border-amore-pink/20 dark:border-amore-lavender/10 p-5 transition-colors overflow-y-auto">
-      {/* Top Header - Professional & Minimal (Zero Amore branding) */}
+      {/* Top Header - Professional & Minimal */}
       <div className="space-y-6">
         <div className="flex items-center gap-3 px-2">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amore-pink to-amore-lavender flex items-center justify-center text-amore-deep-purple shadow-pink-sm">

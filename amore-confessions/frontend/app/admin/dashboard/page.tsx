@@ -68,7 +68,10 @@ export default function AdminDashboardPage() {
 
   // Helper: Get token
   const getAuthHeader = (): Record<string, string> => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('amore-admin-token') : null;
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('admin-token') || localStorage.getItem('amore-admin-token')
+        : null;
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
@@ -136,6 +139,27 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     fetchStats();
     fetchConfessions();
+  }, [fetchStats, fetchConfessions]);
+
+  // Reliable Auto-Refresh: Window focus & periodic poll (15s when active tab)
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchStats();
+      fetchConfessions();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchStats();
+        fetchConfessions();
+      }
+    }, 15000);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(interval);
+    };
   }, [fetchStats, fetchConfessions]);
 
   // Handle Category selection from Sidebar
@@ -233,9 +257,12 @@ export default function AdminDashboardPage() {
     setIsLoggingOut(true);
     try {
       await fetch('/api/admin/logout', { method: 'POST' });
+      localStorage.removeItem('admin-token');
       localStorage.removeItem('amore-admin-token');
       router.push('/admin/login');
     } catch {
+      localStorage.removeItem('admin-token');
+      localStorage.removeItem('amore-admin-token');
       router.push('/admin/login');
     }
   };
@@ -302,7 +329,7 @@ export default function AdminDashboardPage() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Navbar Header - Professional & Minimal (Zero Amore branding) */}
+        {/* Top Navbar Header - Professional & Minimal */}
         <header className="sticky top-0 z-30 flex items-center justify-between px-4 sm:px-8 h-16 sm:h-20 bg-white/60 dark:bg-amore-dark-bg/60 backdrop-blur-xl border-b border-amore-pink/20 dark:border-amore-lavender/10">
           <div className="flex items-center gap-3">
             <button

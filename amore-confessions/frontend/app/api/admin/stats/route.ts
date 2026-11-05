@@ -1,5 +1,5 @@
 // ============================================================================
-// Amore Anonymous College Confession Platform - Admin Dashboard Statistics
+// Anonymous College Confession Platform - Admin Dashboard Statistics
 // GET /api/admin/stats
 // ============================================================================
 

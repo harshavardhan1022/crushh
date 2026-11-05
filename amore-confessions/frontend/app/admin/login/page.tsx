@@ -40,8 +40,9 @@ export default function AdminLoginPage() {
         throw new Error(data.error || 'Authentication failed. Please verify your credentials.');
       }
 
-      // Store token in localStorage if rememberMe or for client API headers
+      // Store token in localStorage
       if (data.token) {
+        localStorage.setItem('admin-token', data.token);
         localStorage.setItem('amore-admin-token', data.token);
       }
 
@@ -90,7 +91,7 @@ export default function AdminLoginPage() {
                 Welcome Back
               </h1>
               <p className="text-xs uppercase tracking-widest font-semibold text-amore-deep-purple/60 dark:text-amore-pink/70">
-                Amore Admin Portal
+                Admin Portal
               </p>
             </div>
 
@@ -208,7 +209,7 @@ export default function AdminLoginPage() {
 
       {/* Footer */}
       <footer className="p-6 text-center text-xs text-amore-deep-purple/40 dark:text-amore-lavender/40 z-10">
-        Amore Platform Administration • Confidential
+        Confession Platform Administration • Confidential
       </footer>
     </div>
   );

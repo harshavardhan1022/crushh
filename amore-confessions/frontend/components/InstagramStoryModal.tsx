@@ -73,7 +73,7 @@ export function InstagramStoryModal({
       ctx.fillStyle = '#F7B6D2';
       ctx.font = 'bold 88px Georgia, serif';
       ctx.letterSpacing = '4px';
-      ctx.fillText('Amore', 540, 320);
+      ctx.fillText('Confessions', 540, 320);
 
       // Decorative divider
       const lineGrad = ctx.createLinearGradient(340, 0, 740, 0);
@@ -174,12 +174,12 @@ export function InstagramStoryModal({
       ctx.fillStyle = 'rgba(247, 182, 210, 0.4)';
       ctx.font = '24px sans-serif';
       ctx.letterSpacing = '6px';
-      ctx.fillText('amore.college • Share your feelings', 540, 1720);
+      ctx.fillText('College Confessions • Share your feelings', 540, 1720);
 
       // Export as PNG
       const dataUrl = canvas.toDataURL('image/png');
       const downloadLink = document.createElement('a');
-      downloadLink.download = `amore-confession-${confession.crush_name.toLowerCase().replace(/[^a-z0-9]/g, '-')}.png`;
+      downloadLink.download = `confession-${confession.crush_name.toLowerCase().replace(/[^a-z0-9]/g, '-')}.png`;
       downloadLink.href = dataUrl;
       downloadLink.click();
 
@@ -259,7 +259,7 @@ export function InstagramStoryModal({
                     ✦ Anonymous Confession ✦
                   </div>
                   <div className="font-serif text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amore-pink to-amore-lavender">
-                    Amore
+                    Confessions
                   </div>
                   <div className="w-16 h-[1px] bg-amore-pink/40 mx-auto" />
                 </div>
@@ -285,7 +285,7 @@ export function InstagramStoryModal({
                     {confession.branch ? ` (${confession.branch})` : ''} • {confession.academic_year} Year
                   </div>
                   <div className="text-[7px] text-white/30 tracking-widest pt-1">
-                    amore.college
+                    College Confessions
                   </div>
                 </div>
               </div>

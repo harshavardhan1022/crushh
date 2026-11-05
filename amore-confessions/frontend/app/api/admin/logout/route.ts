@@ -1,5 +1,5 @@
 // ============================================================================
-// Amore Anonymous College Confession Platform - Admin Logout Route
+// Anonymous College Confession Platform - Admin Logout Route
 // POST /api/admin/logout
 // ============================================================================
 
@@ -13,14 +13,17 @@ export async function POST() {
     message: 'Logged out successfully',
   });
 
-  // Clear the admin auth cookie
-  response.cookies.set('amore-admin-token', '', {
+  const clearCookieOpts = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: 'lax' as const,
     path: '/',
     maxAge: 0,
-  });
+  };
+
+  // Clear admin auth cookies
+  response.cookies.set('admin-token', '', clearCookieOpts);
+  response.cookies.set('amore-admin-token', '', clearCookieOpts);
 
   return response;
 }

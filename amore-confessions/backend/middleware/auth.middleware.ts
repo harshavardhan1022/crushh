@@ -1,5 +1,5 @@
 // ============================================================================
-// Amore Anonymous College Confession Platform - Auth Middleware
+// Anonymous College Confession Platform - Auth Middleware
 // ============================================================================
 
 import { SupabaseClient } from '@supabase/supabase-js';
@@ -25,7 +25,7 @@ export async function verifyAdmin(
 ): Promise<AuthResult> {
   // Local development bypass if Supabase credentials are placeholder
   if (
-    token === 'amore-dev-admin-session-token' &&
+    (token === 'admin-dev-session-token' || token === 'amore-dev-admin-session-token') &&
     (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder'))
   ) {
     return {
@@ -90,7 +90,7 @@ export function extractAuthToken(req: Request): string | null {
     return authHeader.substring(7).trim();
   }
 
-  // Check cookies for sb-access-token or amore-admin-token
+  // Check cookies for admin-token, amore-admin-token, or sb-access-token
   const cookieHeader = req.headers.get('cookie');
   if (cookieHeader) {
     const cookies = Object.fromEntries(
@@ -100,6 +100,9 @@ export function extractAuthToken(req: Request): string | null {
       })
     );
 
+    if (cookies['admin-token']) {
+      return cookies['admin-token'];
+    }
     if (cookies['amore-admin-token']) {
       return cookies['amore-admin-token'];
     }

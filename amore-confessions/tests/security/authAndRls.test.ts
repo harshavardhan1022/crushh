@@ -18,15 +18,26 @@ describe('Admin Authentication & Authorization Security', () => {
     expect(token).toBe('secret-jwt-token-12345');
   });
 
-  it('should extract token from cookie when header is absent', () => {
+  it('should extract token from admin-token cookie when header is absent', () => {
     const req = new Request('http://localhost:3000/api/admin/confessions', {
       headers: {
-        cookie: 'amore-admin-token=cookie-jwt-token-67890; other=val',
+        cookie: 'admin-token=cookie-jwt-token-67890; other=val',
       },
     });
 
     const token = extractAuthToken(req);
     expect(token).toBe('cookie-jwt-token-67890');
+  });
+
+  it('should support legacy amore-admin-token cookie for backwards compatibility', () => {
+    const req = new Request('http://localhost:3000/api/admin/confessions', {
+      headers: {
+        cookie: 'amore-admin-token=cookie-jwt-token-legacy; other=val',
+      },
+    });
+
+    const token = extractAuthToken(req);
+    expect(token).toBe('cookie-jwt-token-legacy');
   });
 
   it('should reject authentication when token is invalid or missing', async () => {

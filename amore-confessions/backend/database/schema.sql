@@ -1,5 +1,5 @@
 -- ============================================================================
--- Amore Anonymous College Confession Platform - Database Schema
+-- Anonymous College Confession Platform - Database Schema
 -- ============================================================================
 
 -- Enable UUID extension (if not already enabled)

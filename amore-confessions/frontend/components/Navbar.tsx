@@ -38,11 +38,11 @@ export function Navbar() {
               </svg>
             </div>
             <div className="flex flex-col">
-              <span className="font-serif text-2xl font-bold tracking-tight text-amore-deep-purple dark:text-white">
-                Amore
+              <span className="font-serif text-xl sm:text-2xl font-bold tracking-tight text-amore-deep-purple dark:text-white">
+                College Confessions
               </span>
               <span className="text-[10px] uppercase tracking-widest font-semibold text-amore-deep-purple/60 dark:text-amore-pink/70 -mt-1">
-                College Confessions
+                Anonymous Student Platform
               </span>
             </div>
           </Link>

@@ -67,6 +67,7 @@ export function ConfessionForm() {
   };
 
   const onSubmit = async (data: ConfessionInput) => {
+    if (isSubmitting) return;
     setIsSubmitting(true);
     setServerError(null);
 

@@ -1,6 +1,6 @@
 -- ============================================================================
 -- Migration 001: Initial Schema and Security Policies
--- Amore Anonymous College Confession Platform
+-- Anonymous College Confession Platform
 -- ============================================================================
 
 -- 1. Enable UUID extension

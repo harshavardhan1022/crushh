@@ -1,6 +1,6 @@
-# Amore – Backend Architecture & Services
+# Backend Architecture & Services
 
-This directory contains the core business logic, database migrations, security policies, validation schemas, and service functions for **Amore – Anonymous College Confessions**.
+This directory contains the core business logic, database migrations, security policies, validation schemas, and service functions for **Anonymous College Confessions**.
 
 ## Directory Structure
 

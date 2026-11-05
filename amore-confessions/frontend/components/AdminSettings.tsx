@@ -26,7 +26,8 @@ export function AdminSettings() {
     setIsLoading(true);
 
     try {
-      const token = localStorage.getItem('amore-admin-token');
+      const token =
+        localStorage.getItem('admin-token') || localStorage.getItem('amore-admin-token');
       const response = await fetch('/api/admin/change-password', {
         method: 'POST',
         headers: {

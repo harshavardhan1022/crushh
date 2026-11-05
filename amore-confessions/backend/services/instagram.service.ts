@@ -1,5 +1,5 @@
 // ============================================================================
-// Amore Anonymous College Confession Platform - Instagram Image Service
+// Anonymous College Confession Platform - Instagram Image Service
 // ============================================================================
 
 export interface ConfessionForImage {
@@ -134,7 +134,7 @@ export function generateConfessionImageHTML(confession: ConfessionForImage): str
         -webkit-text-fill-color: transparent;
         background-clip: text;
         letter-spacing: 4px;
-      ">Amore</div>
+      ">Confessions</div>
       <div style="
         width: 200px;
         height: 2px;

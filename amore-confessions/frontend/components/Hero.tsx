@@ -128,7 +128,7 @@ export function Hero() {
                   </div>
                   <div className="w-12 h-14 rounded-lg border-2 border-dashed border-amore-pink/60 bg-amore-pink/20 flex flex-col items-center justify-center text-center p-1">
                     <Heart className="w-5 h-5 text-amore-pink fill-amore-pink/60" />
-                    <span className="text-[8px] font-bold tracking-tighter text-amore-deep-purple dark:text-amore-pink mt-0.5">AMORE</span>
+                    <span className="text-[8px] font-bold tracking-tighter text-amore-deep-purple dark:text-amore-pink mt-0.5">SEAL</span>
                   </div>
                 </div>
 

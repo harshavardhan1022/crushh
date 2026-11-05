@@ -1,5 +1,5 @@
 // ============================================================================
-// Amore Anonymous College Confession Platform - Configuration
+// Anonymous College Confession Platform - Configuration
 // ============================================================================
 
 /** All available departments */

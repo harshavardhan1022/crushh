@@ -5,7 +5,7 @@ import { ConfessionForm } from '@/components/ConfessionForm';
 import { ArrowLeft, Lock, Heart } from 'lucide-react';
 
 export const metadata = {
-  title: 'Confess Your Feelings | Amore',
+  title: 'Confess Your Feelings | College Confessions',
   description: 'Submit your anonymous college confession safely without creating an account.',
 };
 
@@ -36,13 +36,13 @@ export default function ConfessPage() {
             <span>Submissions are strictly confidential and encrypted in transit.</span>
           </div>
           <p className="text-[11px] text-amore-deep-purple/40 dark:text-amore-lavender/40">
-            Amore never stores IP addresses with submitted confessions. Your anonymity is fully protected.
+            We never store IP addresses with submitted confessions. Your anonymity is fully protected.
           </p>
         </div>
       </main>
 
       <footer className="border-t border-amore-pink/20 dark:border-amore-lavender/10 bg-white/40 dark:bg-amore-dark-bg/40 backdrop-blur-md py-6 text-center text-xs text-amore-deep-purple/50 dark:text-amore-lavender/50">
-        Amore • Anonymous College Confessions
+        Anonymous College Confessions • Confidential & Private
       </footer>
     </div>
   );

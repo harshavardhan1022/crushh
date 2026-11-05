@@ -1,5 +1,5 @@
 // ============================================================================
-// Amore Anonymous College Confession Platform - Confession Details & Actions
+// Anonymous College Confession Platform - Confession Details & Actions
 // GET, PATCH, DELETE /api/admin/confessions/[id]
 // ============================================================================
 

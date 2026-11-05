@@ -1,5 +1,5 @@
 // ============================================================================
-// Amore Anonymous College Confession Platform - Admin Login Route
+// Anonymous College Confession Platform - Admin Login Route
 // POST /api/admin/login
 // ============================================================================
 
@@ -18,6 +18,7 @@ export async function POST(req: Request) {
 
     const rateLimit = checkRateLimit(`login_${ip}`, 5, 60_000);
     if (!rateLimit.allowed) {
+      console.warn(`[API /api/admin/login] Rate limit exceeded for IP: ${ip}`);
       return NextResponse.json(
         {
           success: false,
@@ -45,31 +46,45 @@ export async function POST(req: Request) {
       );
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+    console.log(`[API /api/admin/login] Admin login attempt for: ${cleanEmail}`);
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     // Local development mode when Supabase is still configured with placeholder
     const isPlaceholder = !supabaseUrl || supabaseUrl.includes('placeholder');
     if (isPlaceholder) {
-      const configuredEmail = process.env.ADMIN_EMAIL || 'admin@amore.college';
+      const configuredEmail = (process.env.ADMIN_EMAIL || 'admin@college.edu').toLowerCase();
       const configuredPassword = process.env.INITIAL_ADMIN_PASSWORD || 'AdminSecret123!';
 
-      if (email.trim().toLowerCase() === configuredEmail.toLowerCase() && password === configuredPassword) {
-        const token = 'amore-dev-admin-session-token';
+      const emailMatches =
+        cleanEmail === configuredEmail ||
+        cleanEmail === 'admin@amore.college' ||
+        cleanEmail === 'admin@college.edu';
+
+      if (emailMatches && password === configuredPassword) {
+        const token = 'admin-dev-session-token';
+        console.log(`[API /api/admin/login] Successful dev login for: ${cleanEmail}`);
         const response = NextResponse.json({
           success: true,
-          user: { id: 'dev-admin-001', email: configuredEmail },
+          user: { id: 'dev-admin-001', email: cleanEmail },
           token,
         });
-        response.cookies.set('amore-admin-token', token, {
+
+        const cookieOpts = {
           httpOnly: true,
           secure: false,
-          sameSite: 'lax',
+          sameSite: 'lax' as const,
           path: '/',
           maxAge: 3600 * 24,
-        });
+        };
+
+        response.cookies.set('admin-token', token, cookieOpts);
+        response.cookies.set('amore-admin-token', token, cookieOpts);
         return response;
       } else {
+        console.warn(`[API /api/admin/login] Invalid credentials for: ${cleanEmail}`);
         return NextResponse.json(
           { success: false, error: 'Invalid email or password' },
           { status: 401 }
@@ -90,11 +105,12 @@ export async function POST(req: Request) {
     });
 
     const { data: authData, error: authError } = await client.auth.signInWithPassword({
-      email: email.trim(),
+      email: cleanEmail,
       password,
     });
 
     if (authError || !authData?.user || !authData.session) {
+      console.warn(`[API /api/admin/login] Supabase Auth rejected login for: ${cleanEmail}`);
       return NextResponse.json(
         { success: false, error: 'Invalid email or password' },
         { status: 401 }
@@ -111,14 +127,16 @@ export async function POST(req: Request) {
       .single();
 
     if (profileError || !profile) {
+      console.warn(`[API /api/admin/login] Access denied (not an admin) for user ID: ${authData.user.id}`);
       return NextResponse.json(
         { success: false, error: 'Access denied: User is not an authorized administrator' },
         { status: 403 }
       );
     }
 
-    // 5. Build response and set HTTP-only secure session cookie
+    // 5. Build response and set HTTP-only secure session cookies
     const token = authData.session.access_token;
+    console.log(`[API /api/admin/login] Successful Supabase admin login for: ${cleanEmail}`);
     const response = NextResponse.json(
       {
         success: true,
@@ -131,13 +149,16 @@ export async function POST(req: Request) {
       { status: 200 }
     );
 
-    response.cookies.set('amore-admin-token', token, {
+    const prodCookieOpts = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'lax' as const,
       path: '/',
-      maxAge: authData.session.expires_in || 3600 * 24, // 24 hours
-    });
+      maxAge: authData.session.expires_in || 3600 * 24,
+    };
+
+    response.cookies.set('admin-token', token, prodCookieOpts);
+    response.cookies.set('amore-admin-token', token, prodCookieOpts);
 
     return response;
   } catch (error: any) {

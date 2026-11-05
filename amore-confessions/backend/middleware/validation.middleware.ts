@@ -1,5 +1,5 @@
 // ============================================================================
-// Amore Anonymous College Confession Platform - Validation Middleware
+// Anonymous College Confession Platform - Validation Middleware
 // ============================================================================
 
 /**

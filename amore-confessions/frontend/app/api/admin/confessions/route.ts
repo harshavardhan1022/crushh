@@ -1,5 +1,5 @@
 // ============================================================================
-// Amore Anonymous College Confession Platform - Admin Confessions Listing
+// Anonymous College Confession Platform - Admin Confessions Listing
 // GET /api/admin/confessions
 // ============================================================================
 
@@ -19,6 +19,7 @@ export async function GET(req: Request) {
     const token = extractAuthToken(req);
     const auth = await verifyAdmin(supabase, token);
     if (!auth.authorized) {
+      console.warn(`[API /api/admin/confessions] Unauthorized attempt: ${auth.error}`);
       return NextResponse.json(
         { success: false, error: auth.error || 'Unauthorized access' },
         { status: 401 }
@@ -47,6 +48,10 @@ export async function GET(req: Request) {
     const page = pageParam ? Math.max(1, parseInt(pageParam, 10)) : 1;
     const limit = limitParam ? Math.min(100, Math.max(1, parseInt(limitParam, 10))) : 20;
 
+    console.log(
+      `[API /api/admin/confessions] Admin query: status=${status ?? 'all'}, dept=${department ?? 'all'}, branch=${branch ?? 'all'}, page=${page}`
+    );
+
     // 3. Fetch confessions
     const result = await getConfessions(supabase, {
       status: status || undefined,
@@ -62,11 +67,16 @@ export async function GET(req: Request) {
     });
 
     if (!result.success) {
+      console.error(`[API /api/admin/confessions] Service error: ${result.error}`);
       return NextResponse.json(
         { success: false, error: result.error || 'Failed to fetch confessions' },
         { status: 500 }
       );
     }
+
+    console.log(
+      `[API /api/admin/confessions] Returning ${result.data?.length ?? 0} confessions (total matching: ${result.count ?? 0})`
+    );
 
     return NextResponse.json({
       success: true,
