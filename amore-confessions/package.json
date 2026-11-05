@@ -11,6 +11,9 @@
     "start": "npm --prefix frontend run start",
     "lint": "npm --prefix frontend run lint",
     "test": "npm --prefix frontend run test"
+  },
+  "dependencies": {
+    "@types/pg": "^8.23.1",
+    "pg": "^8.23.1"
   }
 }
-

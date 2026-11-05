@@ -45,6 +45,9 @@ export interface ServiceResult<T = unknown> {
   data?: T;
   count?: number;
   error?: string;
+  code?: string;
+  details?: string;
+  hint?: string;
 }
 
 export interface ConfessionStats {
@@ -256,6 +259,7 @@ export async function submitConfession(
     return { success: true, data: newConfession };
   }
 
+  // Attempt insert
   const { data: confession, error } = await supabase
     .from('confessions')
     .insert(sanitized)
@@ -263,12 +267,19 @@ export async function submitConfession(
     .single();
 
   if (error) {
-    console.error('[confession.service] submitConfession error:', error);
-    // If SELECT was denied under strict RLS (anonymous INSERT only), fall back to insert without select
+    console.error('[confession.service] submitConfession database error:', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+
+    // If SELECT was denied under strict anon INSERT policy, fall back to pure insert without select
     if (
       error.code === 'PGRST116' ||
-      error.message?.includes('0 rows') ||
-      error.message?.includes('permission denied')
+      error.code === '42501' ||
+      error.message?.includes('permission denied') ||
+      error.message?.includes('0 rows')
     ) {
       const fallbackInsert = await supabase.from('confessions').insert(sanitized);
       if (!fallbackInsert.error) {
@@ -283,11 +294,34 @@ export async function submitConfession(
           } as Confession,
         };
       }
+      return {
+        success: false,
+        error: fallbackInsert.error.message,
+        code: fallbackInsert.error.code,
+        details: fallbackInsert.error.details,
+        hint: fallbackInsert.error.hint,
+      };
     }
-    return { success: false, error: error.message };
+
+    return {
+      success: false,
+      error: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    };
   }
 
-  return { success: true, data: confession as Confession };
+  return {
+    success: true,
+    data: (confession || {
+      ...sanitized,
+      id: `confession-${Date.now()}`,
+      published_at: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }) as Confession,
+  };
 }
 
 /**

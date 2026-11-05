@@ -14,12 +14,26 @@ import {
   type BTechBranch,
 } from '../config';
 
+const YEAR_NORMALIZATION_MAP: Record<string, string> = {
+  '1': '1st',
+  '2': '2nd',
+  '3': '3rd',
+  '4': '4th',
+  '5': '5th',
+  '1st': '1st',
+  '2nd': '2nd',
+  '3rd': '3rd',
+  '4th': '4th',
+  '5th': '5th',
+  'Graduated': 'Graduated',
+};
+
 /**
  * Zod schema for validating a confession submission.
  * Enforces cross-field rules for departments, branches, and academic years:
  * - B.Tech: Branch is mandatory and must be one of ('CSE', 'CSD', 'ECE', 'Civil', 'Mech')
  * - Other departments: Branch must be null/empty
- * - Academic year: Must match department allowed years
+ * - Academic year: Must match department allowed years (accepts both "1" and "1st")
  */
 export const confessionSchema = z
   .object({
@@ -28,7 +42,8 @@ export const confessionSchema = z
       .trim()
       .max(100, 'Sender name must be at most 100 characters')
       .optional()
-      .nullable(),
+      .nullable()
+      .transform((val) => (val === '' ? null : val)),
 
     crushName: z
       .string()
@@ -44,11 +59,18 @@ export const confessionSchema = z
       .string()
       .trim()
       .optional()
-      .nullable(),
+      .nullable()
+      .transform((val) => (val === '' ? null : val)),
 
-    academicYear: z.enum(ACADEMIC_YEARS, {
-      errorMap: () => ({ message: `Academic year must be one of: ${ACADEMIC_YEARS.join(', ')}` }),
-    }),
+    academicYear: z
+      .string()
+      .trim()
+      .transform((val) => YEAR_NORMALIZATION_MAP[val] || val)
+      .pipe(
+        z.enum(ACADEMIC_YEARS, {
+          errorMap: () => ({ message: `Academic year must be one of: ${ACADEMIC_YEARS.join(', ')}` }),
+        })
+      ),
 
     confessionMessage: z
       .string()
