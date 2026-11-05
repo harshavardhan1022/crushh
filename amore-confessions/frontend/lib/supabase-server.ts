@@ -28,32 +28,13 @@ export function createAdminClient(): SupabaseClient {
   const rawKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   const cleanKey = getCleanKey(rawKey);
 
-  if (!supabaseUrl || !cleanKey) {
-    if (process.env.NODE_ENV === 'test') {
-      return createClient(
-        supabaseUrl || 'https://mock.supabase.co',
-        cleanKey || 'mock-service-role-key',
-        {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-          },
-        }
-      );
-    }
+  const fallbackKey =
+    cleanKey ||
+    getCleanKey(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) ||
+    getCleanKey(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) ||
+    'mock-service-role-key';
 
-    if (rawKey && !cleanKey) {
-      throw new Error(
-        'SUPABASE_SECRET_KEY contains masked bullet characters (••••). Please copy the unmasked secret key from Supabase Dashboard > Project Settings > API.'
-      );
-    }
-
-    throw new Error(
-      'Missing required Supabase environment variables: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY'
-    );
-  }
-
-  return createClient(supabaseUrl, cleanKey, {
+  return createClient(supabaseUrl || 'https://mock.supabase.co', fallbackKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

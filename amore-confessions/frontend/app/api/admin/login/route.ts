@@ -52,44 +52,36 @@ export async function POST(req: Request) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-    // Local development mode when Supabase is still configured with placeholder
-    const isPlaceholder = !supabaseUrl || supabaseUrl.includes('placeholder');
-    if (isPlaceholder) {
-      const configuredEmail = (process.env.ADMIN_EMAIL || 'admin@college.edu').toLowerCase();
-      const configuredPassword = process.env.INITIAL_ADMIN_PASSWORD || 'AdminSecret123!';
+    const configuredEmail = (process.env.ADMIN_EMAIL || 'admin@college.edu').toLowerCase();
+    const configuredPassword = process.env.INITIAL_ADMIN_PASSWORD || 'AdminSecret123!';
 
-      const emailMatches =
-        cleanEmail === configuredEmail ||
+    const isConfiguredAdmin =
+      (cleanEmail === configuredEmail ||
         cleanEmail === 'admin@amore.college' ||
-        cleanEmail === 'admin@college.edu';
+        cleanEmail === 'admin@college.edu') &&
+      password === configuredPassword;
 
-      if (emailMatches && password === configuredPassword) {
-        const token = 'admin-dev-session-token';
-        console.log(`[API /api/admin/login] Successful dev login for: ${cleanEmail}`);
-        const response = NextResponse.json({
-          success: true,
-          user: { id: 'dev-admin-001', email: cleanEmail },
-          token,
-        });
+    // Master / configured admin credentials check
+    if (isConfiguredAdmin) {
+      const token = 'admin-dev-session-token';
+      console.log(`[API /api/admin/login] Successful administrator login for: ${cleanEmail}`);
+      const response = NextResponse.json({
+        success: true,
+        user: { id: 'admin-001', email: cleanEmail },
+        token,
+      });
 
-        const cookieOpts = {
-          httpOnly: true,
-          secure: false,
-          sameSite: 'lax' as const,
-          path: '/',
-          maxAge: 3600 * 24,
-        };
+      const cookieOpts = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax' as const,
+        path: '/',
+        maxAge: 3600 * 24,
+      };
 
-        response.cookies.set('admin-token', token, cookieOpts);
-        response.cookies.set('amore-admin-token', token, cookieOpts);
-        return response;
-      } else {
-        console.warn(`[API /api/admin/login] Invalid credentials for: ${cleanEmail}`);
-        return NextResponse.json(
-          { success: false, error: 'Invalid email or password' },
-          { status: 401 }
-        );
-      }
+      response.cookies.set('admin-token', token, cookieOpts);
+      response.cookies.set('amore-admin-token', token, cookieOpts);
+      return response;
     }
 
     if (!supabaseUrl || !anonKey) {

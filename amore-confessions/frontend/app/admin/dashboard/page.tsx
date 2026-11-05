@@ -72,13 +72,28 @@ export default function AdminDashboardPage() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isInstagramModalOpen, setIsInstagramModalOpen] = useState(false);
 
-  // Helper: Get token
+  // Helper: Format confession date safely without throwing RangeError
+  const formatConfessionDate = (dateVal: any): string => {
+    try {
+      if (!dateVal) return 'Recently';
+      const d = new Date(dateVal);
+      return isNaN(d.getTime()) ? 'Recently' : d.toLocaleDateString();
+    } catch {
+      return 'Recently';
+    }
+  };
+
+  // Helper: Get token safely
   const getAuthHeader = (): Record<string, string> => {
-    const token =
-      typeof window !== 'undefined'
-        ? localStorage.getItem('admin-token') || localStorage.getItem('amore-admin-token')
-        : null;
-    return token ? { Authorization: `Bearer ${token}` } : {};
+    try {
+      const token =
+        typeof window !== 'undefined'
+          ? localStorage.getItem('admin-token') || localStorage.getItem('amore-admin-token')
+          : null;
+      return token ? { Authorization: `Bearer ${token}` } : {};
+    } catch {
+      return {};
+    }
   };
 
   // Fetch Stats (with cache: 'no-store')
@@ -92,8 +107,8 @@ export default function AdminDashboardPage() {
         router.push('/admin/login');
         return;
       }
-      const data = await res.json();
-      if (data.success && data.data) {
+      const data = await res.json().catch(() => null);
+      if (data && data.success && data.data) {
         setStats(data.data);
       }
     } catch (err) {
@@ -132,14 +147,14 @@ export default function AdminDashboardPage() {
         return;
       }
 
-      const data = await res.json();
-      if (data.success) {
-        setConfessions(data.data || []);
-        setTotalCount(data.count || 0);
+      const data = await res.json().catch(() => null);
+      if (data && data.success) {
+        setConfessions(Array.isArray(data.data) ? data.data : []);
+        setTotalCount(typeof data.count === 'number' ? data.count : 0);
         setFetchError(null);
         setLastSynced(new Date());
       } else {
-        setFetchError(data.error || 'Failed to load confessions from database');
+        setFetchError(data?.error || 'Failed to load confessions from database');
       }
     } catch (err: any) {
       console.error('Failed to load confessions:', err);
@@ -171,45 +186,72 @@ export default function AdminDashboardPage() {
 
   // Supabase Realtime Subscription: Instantly reflect new student submissions & moderation
   useEffect(() => {
-    const supabase = getSupabaseClient();
-    const token =
-      typeof window !== 'undefined'
-        ? localStorage.getItem('admin-token') || localStorage.getItem('amore-admin-token')
-        : null;
+    let channel: any = null;
+    try {
+      const supabase = getSupabaseClient();
+      if (!supabase) {
+        setRealtimeStatus('disconnected');
+        return;
+      }
 
-    if (token && supabase.realtime) {
-      supabase.realtime.setAuth(token);
+      const token =
+        typeof window !== 'undefined'
+          ? localStorage.getItem('admin-token') || localStorage.getItem('amore-admin-token')
+          : null;
+
+      // Only pass valid 3-part JWTs to Supabase Realtime
+      if (token && token.split('.').length === 3 && supabase.realtime) {
+        try {
+          supabase.realtime.setAuth(token);
+        } catch {
+          // Ignore auth set error
+        }
+      }
+
+      if (typeof supabase.channel === 'function') {
+        channel = supabase
+          .channel('admin-confessions-realtime-sub')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'confessions',
+            },
+            (payload) => {
+              console.log('[Admin Realtime] Table change detected:', payload.eventType);
+              fetchStats();
+              fetchConfessions();
+              setLastSynced(new Date());
+            }
+          )
+          .subscribe((status, err) => {
+            if (status === 'SUBSCRIBED') {
+              setRealtimeStatus('connected');
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+              setRealtimeStatus('disconnected');
+              if (err) console.warn('[Admin Realtime] Realtime subscription issue:', err);
+            } else {
+              setRealtimeStatus('connecting');
+            }
+          });
+      }
+    } catch (err) {
+      console.warn('[Admin Realtime] Realtime initialization skipped:', err);
+      setRealtimeStatus('disconnected');
     }
 
-    const channel = supabase
-      .channel('admin-confessions-realtime-sub')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'confessions',
-        },
-        (payload) => {
-          console.log('[Admin Realtime] Table change detected:', payload.eventType);
-          fetchStats();
-          fetchConfessions();
-          setLastSynced(new Date());
-        }
-      )
-      .subscribe((status, err) => {
-        if (status === 'SUBSCRIBED') {
-          setRealtimeStatus('connected');
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          setRealtimeStatus('disconnected');
-          if (err) console.warn('[Admin Realtime] Realtime subscription issue:', err);
-        } else {
-          setRealtimeStatus('connecting');
-        }
-      });
-
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        try {
+          const supabase = getSupabaseClient();
+          if (supabase && typeof supabase.removeChannel === 'function') {
+            supabase.removeChannel(channel);
+          }
+        } catch {
+          // Ignore cleanup error
+        }
+      }
     };
   }, [fetchStats, fetchConfessions]);
 
@@ -631,7 +673,7 @@ export default function AdminDashboardPage() {
                       className="input-field text-xs py-2.5 px-3 w-auto cursor-pointer"
                     >
                       <option value="">All Years</option>
-                      {DEPARTMENT_YEARS[selectedDepartment as Department]?.map((yr) => (
+                      {(DEPARTMENT_YEARS[selectedDepartment as Department] || []).map((yr) => (
                         <option key={yr} value={yr}>
                           {yr} Year
                         </option>
@@ -666,7 +708,7 @@ export default function AdminDashboardPage() {
                   <div className="py-16">
                     <LoadingAnimation text="Loading submissions..." />
                   </div>
-                ) : confessions.length === 0 ? (
+                ) : (confessions || []).length === 0 ? (
                   <div className="py-16 text-center space-y-2">
                     <Shield className="w-10 h-10 mx-auto text-amore-pink/40" />
                     <p className="text-sm font-semibold text-amore-deep-purple/70 dark:text-amore-lavender/70">
@@ -675,24 +717,24 @@ export default function AdminDashboardPage() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {confessions.map((item) => (
+                    {(confessions || []).filter(Boolean).map((item) => (
                       <div
-                        key={item.id}
+                        key={item.id || Math.random().toString()}
                         className="p-4 sm:p-5 rounded-2xl bg-white/50 dark:bg-amore-dark-bg/50 border border-amore-pink/15 hover:border-amore-pink/40 transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4 group"
                       >
                         {/* Confession info */}
                         <div className="space-y-1.5 flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="font-serif font-bold text-base text-amore-deep-purple dark:text-white truncate">
-                              To: {item.crush_name}
+                              To: {item.crush_name || 'Anonymous'}
                             </span>
                             <span className="text-xs text-amore-deep-purple/50 dark:text-amore-lavender/50">
                               from {item.sender_name?.trim() || 'Anonymous'}
                             </span>
                             {/* Department & Branch Tag */}
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amore-pink/20 text-amore-deep-purple dark:text-amore-pink">
-                              {item.department}
-                              {item.branch ? ` (${item.branch})` : ''} • {item.academic_year}
+                              {item.department || 'General'}
+                              {item.branch ? ` (${item.branch})` : ''} • {item.academic_year || ''}
                             </span>
                             <span
                               className={`px-2 py-0.5 rounded-full text-[10px] font-bold capitalize ${
@@ -703,7 +745,7 @@ export default function AdminDashboardPage() {
                                   : 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
                               }`}
                             >
-                              {item.status}
+                              {item.status || 'pending'}
                             </span>
                             {item.instagram_published && (
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-700 dark:text-purple-300">
@@ -713,11 +755,11 @@ export default function AdminDashboardPage() {
                           </div>
 
                           <p className="text-xs sm:text-sm text-amore-deep-purple/75 dark:text-amore-lavender/80 line-clamp-2 font-light">
-                            {item.confession_message}
+                            {item.confession_message || ''}
                           </p>
 
                           <div className="text-[11px] text-amore-deep-purple/40 dark:text-amore-lavender/40 flex items-center gap-3">
-                            <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                            <span>{formatConfessionDate(item.created_at)}</span>
                             <span>
                               Consent:{' '}
                               <strong className={item.publication_consent ? 'text-green-500' : 'text-red-500'}>

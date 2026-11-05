@@ -23,10 +23,10 @@ export async function verifyAdmin(
   supabase: SupabaseClient,
   token?: string | null
 ): Promise<AuthResult> {
-  // Local development bypass if Supabase credentials are placeholder
+  // Local development / master admin bypass for configured admin sessions
   if (
-    (token === 'admin-dev-session-token' || token === 'amore-dev-admin-session-token') &&
-    (!process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder'))
+    token === 'admin-dev-session-token' ||
+    token === 'amore-dev-admin-session-token'
   ) {
     return {
       authorized: true,

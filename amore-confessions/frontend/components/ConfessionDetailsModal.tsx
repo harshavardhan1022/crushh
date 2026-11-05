@@ -40,16 +40,21 @@ export function ConfessionDetailsModal({
 
   if (!isOpen || !confession) return null;
 
-  const dateObj = new Date(confession.created_at);
-  const formattedDate = dateObj.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-  const formattedTime = dateObj.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const dateObj = confession.created_at ? new Date(confession.created_at) : new Date();
+  const isValidDate = !isNaN(dateObj.getTime());
+  const formattedDate = isValidDate
+    ? dateObj.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+    : 'Unknown Date';
+  const formattedTime = isValidDate
+    ? dateObj.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '';
 
   const handleApprove = async () => {
     setIsProcessing(true);
